@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0b0d11;
+    --surface: #13161d;
+    --surface2: #1b1f2a;
+    --border: rgba(255,255,255,0.07);
+    --accent: #5b8cff;
+    --accent2: #a78bfa;
+    --text: #e8eaf0;
+    --muted: #7a7f94;
+    --success: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --radius: 10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* grid noise texture */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(91,140,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,140,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-bottom: 3rem;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .logo-icon svg { width: 20px; height: 20px; fill: white; }
+
+  .site-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Config panel ── */
+  .config-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .config-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .field {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+
+  .btn-scan {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 9px 22px;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .btn-scan:hover { opacity: 0.85; }
+  .btn-scan:active { transform: scale(0.97); }
+  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Status bar ── */
+  #status-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  #status-bar.show { display: flex; }
+
+  .pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1s ease-in-out infinite alternate;
+    flex-shrink: 0;
+  }
+  @keyframes pulse { to { opacity: 0.2; } }
+
+  .status-ok .pulse { background: var(--success); animation: none; }
+  .status-err .pulse { background: var(--err); animation: none; }
+
+  /* ── Stats row ── */
+  #stats-row {
+    display: none;
+    gap: 12px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  #stats-row.show { display: flex; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .stat-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Filter bar ── */
+  #filter-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  #filter-bar.show { display: flex; }
+
+  #filter-input {
+    flex: 1;
+    max-width: 320px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 7px 12px;
+    outline: none;
+  }
+  #filter-input:focus { border-color: var(--accent); }
+
+  .sort-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 7px 12px;
+    transition: color 0.2s, border-color 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .sort-btn:hover, .sort-btn.active { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Grid ── */
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    text-decoration: none;
+    display: block;
+    animation: fadeUp 0.35s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-thumb {
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-thumb::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 120%, rgba(91,140,255,0.12), transparent 70%);
+  }
+
+  .thumb-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    z-index: 1;
+    filter: drop-shadow(0 0 18px rgba(91,140,255,0.35));
+  }
+
+  .card-body {
+    padding: 14px 16px;
+  }
+
+  .card-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+
+  .card-path {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-footer {
+    padding: 8px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-size {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .open-btn {
+    background: rgba(91,140,255,0.12);
+    border: 1px solid rgba(91,140,255,0.3);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    transition: background 0.2s;
+  }
+
+  .card:hover .open-btn {
+    background: rgba(91,140,255,0.22);
+  }
+
+  /* depth folders */
+  .depth-0 .card-thumb { }
+  .depth-1 .card-thumb { background: #151a26; }
+  .depth-2 .card-thumb { background: #121520; }
+
+  /* ── Empty / error ── */
+  .empty {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 2;
+  }
+
+  .empty strong { color: var(--err); display: block; font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 4rem;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">
+        <!-- HTML tag icon -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 3l1.5 16.5L12 21l7.5-1.5L21 3H3zm14.1 4.5H8.4l.3 2.7h8.1l-.9 9.3L12 20.4l-3.9-1.2-.3-2.7h2.7l.15 1.5L12 18.3l1.35-.3.15-1.5H7.8l-.6-6.3H16.8l-.3 2.7-.3.3z"/>
+        </svg>
+      </div>
+      <span class="site-title">HTML Launcher</span>
+    </div>
+    <h1>Vos applications<br>en un clic</h1>
+    <p class="subtitle">// Scan automatique des fichiers .html du dépôt</p>
+  </header>
+
+  <!-- Config -->
+  <div class="config-card">
+    <div class="config-row">
+      <div class="field">
+        <label>Utilisateur GitHub</label>
+        <input type="text" id="inp-user" placeholder="octocat" />
+      </div>
+      <div class="field">
+        <label>Dépôt</label>
+        <input type="text" id="inp-repo" placeholder="mon-depot" />
+      </div>
+      <div class="field" style="max-width:130px;">
+        <label>Branche</label>
+        <input type="text" id="inp-branch" placeholder="main" value="main" />
+      </div>
+      <button class="btn-scan" id="btn-scan" onclick="scan()">▶ Scanner</button>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div id="status-bar">
+    <div class="pulse"></div>
+    <span id="status-msg">Chargement…</span>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-row">
+    <div class="stat-card"><span class="stat-num" id="s-total">0</span><span class="stat-label">fichiers HTML</span></div>
+    <div class="stat-card"><span class="stat-num" id="s-dirs">0</span><span class="stat-label">dossiers</span></div>
+    <div class="stat-card"><span class="stat-num" id="s-root">0</span><span class="stat-label">à la racine</span></div>
+  </div>
+
+  <!-- Filter -->
+  <div id="filter-bar">
+    <input id="filter-input" type="text" placeholder="Filtrer…" oninput="renderCards()" />
+    <button class="sort-btn active" id="sort-name" onclick="setSort('name')">A→Z</button>
+    <button class="sort-btn" id="sort-path" onclick="setSort('path')">Chemin</button>
+  </div>
+
+  <!-- Cards -->
+  <div id="grid"></div>
+
+  <footer id="footer"></footer>
+
+</div>
+
+<script>
+/* ── State ── */
+let files = [];
+let sortMode = 'name';
+let repoUser = '', repoName = '', repoBranch = 'main';
+
+/* ── Auto-detect own repo from URL ── */
+(function detectSelf() {
+  const host = location.hostname;
+  const parts = location.pathname.split('/').filter(Boolean);
+  if (host.endsWith('github.io')) {
+    const user = host.replace('.github.io', '');
+    document.getElementById('inp-user').value = user;
+    document.getElementById('inp-repo').value = parts[0] || user + '.github.io';
+    scan();
+  } else if (host === 'raw.githubusercontent.com' || host === 'github.com') {
+    if (parts.length >= 2) {
+      document.getElementById('inp-user').value = parts[0];
+      document.getElementById('inp-repo').value = parts[1];
+      scan();
+    }
+  }
+})();
+
+/* ── Format size ── */
+function fmtSize(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  return (b / 1024).toFixed(1) + ' KB';
+}
+
+/* ── Pick an icon based on filename hints ── */
+function iconFor(name) {
+  const n = name.toLowerCase();
+  if (n.includes('quiz') || n.includes('game') || n.includes('jeu')) return '🎮';
+  if (n.includes('dashboard') || n.includes('tableau')) return '📊';
+  if (n.includes('map') || n.includes('carte')) return '🗺️';
+  if (n.includes('chart') || n.includes('graph')) return '📈';
+  if (n.includes('form') || n.includes('formulaire')) return '📋';
+  if (n.includes('doc') || n.includes('readme')) return '📄';
+  if (n.includes('login') || n.includes('auth')) return '🔐';
+  if (n.includes('calc') || n.includes('tool')) return '🔧';
+  if (n.includes('index') || n.includes('home')) return '🏠';
+  return '⚡';
+}
+
+/* ── Recursive tree fetch via GitHub API ── */
+async function fetchTree(user, repo, branch) {
+  const apiBase = `https://api.github.com/repos/${user}/${repo}`;
+  // get commit SHA for branch
+  const refRes = await fetch(`${apiBase}/git/ref/heads/${branch}`);
+  if (!refRes.ok) {
+    // try 'master' fallback
+    if (branch === 'main') {
+      const r2 = await fetch(`${apiBase}/git/ref/heads/master`);
+      if (!r2.ok) throw new Error(`Branche introuvable (${refRes.status})`);
+      const d2 = await r2.json();
+      return fetchTreeBySha(apiBase, d2.object.sha, 'master');
+    }
+    throw new Error(`Erreur API GitHub: ${refRes.status}`);
+  }
+  const ref = await refRes.json();
+  const actualBranch = branch;
+  return fetchTreeBySha(apiBase, ref.object.sha, actualBranch);
+}
+
+async function fetchTreeBySha(apiBase, sha, branch) {
+  const res = await fetch(`${apiBase}/git/trees/${sha}?recursive=1`);
+  if (!res.ok) throw new Error(`Impossible de lire l'arbre: ${res.status}`);
+  const data = await res.json();
+  if (data.truncated) setStatus('Arbre tronqué (grand dépôt) — certains fichiers peuvent manquer', 'warn');
+  return { tree: data.tree, branch };
+}
+
+/* ── Main scan ── */
+async function scan() {
+  const user   = document.getElementById('inp-user').value.trim();
+  const repo   = document.getElementById('inp-repo').value.trim();
+  const branch = document.getElementById('inp-branch').value.trim() || 'main';
+
+  if (!user || !repo) { setStatus('Renseigne utilisateur et dépôt', 'err'); return; }
+
+  repoUser = user; repoName = repo; repoBranch = branch;
+
+  setStatus('Connexion à l\'API GitHub…', 'loading');
+  document.getElementById('btn-scan').disabled = true;
+  document.getElementById('stats-row').classList.remove('show');
+  document.getElementById('filter-bar').classList.remove('show');
+  document.getElementById('grid').innerHTML = '';
+  files = [];
+
+  try {
+    const { tree, branch: actualBranch } = await fetchTree(user, repo, branch);
+    repoBranch = actualBranch;
+    document.getElementById('inp-branch').value = actualBranch;
+
+    files = tree
+      .filter(n => n.type === 'blob' && n.path.toLowerCase().endsWith('.html'))
+      .filter(n => !n.path.toLowerCase().includes('node_modules'))
+      .map(n => ({
+        path: n.path,
+        name: n.path.split('/').pop(),
+        dir:  n.path.includes('/') ? n.path.split('/').slice(0,-1).join('/') : '',
+        size: n.size || 0,
+        depth: n.path.split('/').length - 1,
+        url: `https://${user}.github.io/${repo}/${n.path}`
+      }));
+
+    if (files.length === 0) {
+      setStatus('Aucun fichier .html trouvé', 'ok');
+      document.getElementById('grid').innerHTML = '<div class="empty">Aucun fichier .html dans ce dépôt.</div>';
+    } else {
+      setStatus(`${files.length} fichier(s) HTML trouvé(s) dans ${user}/${repo}`, 'ok');
+      updateStats();
+      renderCards();
+      document.getElementById('filter-bar').classList.add('show');
+    }
+
+    document.getElementById('footer').textContent =
+      `// github.com/${user}/${repo} · branche: ${actualBranch} · ${new Date().toLocaleTimeString('fr')}`;
+
+  } catch(e) {
+    setStatus(e.message, 'err');
+    document.getElementById('grid').innerHTML =
+      `<div class="empty"><strong>Erreur</strong>${e.message}<br><br>Vérifie que le dépôt est public et que l'utilisateur/nom est correct.</div>`;
+  } finally {
+    document.getElementById('btn-scan').disabled = false;
+  }
+}
+
+/* ── Status helper ── */
+function setStatus(msg, type) {
+  const bar = document.getElementById('status-bar');
+  const dot = bar.querySelector('.pulse');
+  bar.className = 'status-' + type + ' show';
+  document.getElementById('status-msg').textContent = msg;
+  dot.className = 'pulse';
+  bar.classList.add('show');
+}
+
+/* ── Stats ── */
+function updateStats() {
+  const dirs = new Set(files.map(f => f.dir).filter(Boolean));
+  const root = files.filter(f => f.depth === 0).length;
+  document.getElementById('s-total').textContent = files.length;
+  document.getElementById('s-dirs').textContent = dirs.size;
+  document.getElementById('s-root').textContent = root;
+  document.getElementById('stats-row').classList.add('show');
+}
+
+/* ── Sort ── */
+function setSort(mode) {
+  sortMode = mode;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sort-' + mode).classList.add('active');
+  renderCards();
+}
+
+/* ── Render ── */
+function renderCards() {
+  const q = document.getElementById('filter-input').value.toLowerCase();
+  let list = q ? files.filter(f => f.path.toLowerCase().includes(q)) : [...files];
+
+  list.sort((a, b) => sortMode === 'name'
+    ? a.name.localeCompare(b.name, 'fr')
+    : a.path.localeCompare(b.path, 'fr'));
+
+  const grid = document.getElementById('grid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty">Aucun résultat pour cette recherche.</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map((f, i) => {
+    const icon = iconFor(f.name);
+    const label = f.name.replace(/\.html?$/i, '');
+    const rawUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/${repoBranch}/${f.path}`;
+    const pagesUrl = `https://${repoUser}.github.io/${repoName}/${f.path}`;
+
+    return `<a class="card depth-${Math.min(f.depth,2)}" href="${pagesUrl}" target="_blank" rel="noopener"
+               style="animation-delay:${i*0.04}s" title="${f.path}">
+      <div class="card-thumb">
+        <span class="thumb-icon">${icon}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${label}</div>
+        <div class="card-path">${f.dir ? f.dir + '/' : ''}${f.name}</div>
+      </div>
+      <div class="card-footer">
+        <span class="card-size">${fmtSize(f.size)}</span>
+        <span class="open-btn">Ouvrir ↗</span>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+/* ── Enter key on inputs ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' &&
+      ['inp-user','inp-repo','inp-branch'].includes(document.activeElement?.id)) scan();
+});
+</script>
+</body>
+</html>
