@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R&D Resource Manager v1.0</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+body { font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif; background: #f0f2f7; color: #1a1a2e; }
+
+/* ── Layout ── */
+.shell { display: flex; min-height: 100vh; }
+.sidebar { width: 230px; min-width: 230px; background: #0d1b3e; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.logo-chip { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }
+.logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg,#4f8ef7,#6c63ff); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; font-weight: 800; }
+.logo-title { font-size: 14px; font-weight: 800; color: #e8eaf0; letter-spacing: -.01em; }
+.logo-sub { font-size: 10px; color: rgba(255,255,255,.28); letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+.nav-section { padding: 10px 0 2px; }
+.nav-section-lbl { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.2); letter-spacing: .14em; text-transform: uppercase; padding: 0 20px 6px; }
+.nav { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,.48); border-left: 3px solid transparent; transition: all .14s; user-select: none; }
+.nav:hover { color: rgba(255,255,255,.85); background: rgba(255,255,255,.05); }
+.nav.active { color: #fff; background: rgba(79,142,247,.18); border-left-color: #4f8ef7; font-weight: 600; }
+.nav-ico { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.sidebar-footer { margin-top: auto; padding: 14px 20px; border-top: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; justify-content: space-between; }
+.sidebar-ver { font-size: 10px; color: rgba(255,255,255,.2); }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.topbar { background: #fff; border-bottom: 1px solid #e2e6f0; display: flex; align-items: center; padding: 0 24px; gap: 10px; height: 56px; position: sticky; top: 0; z-index: 10; flex-shrink: 0; }
+.topbar-title { font-size: 16px; font-weight: 800; color: #0d1b3e; flex: 1; letter-spacing: -.01em; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sep { width: 1px; height: 20px; background: #e2e6f0; flex-shrink: 0; }
+.content { flex: 1; padding: 24px; overflow-y: auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Filters bar ── */
+.filters-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.filters-bar h2 { font-size: 16px; font-weight: 800; color: #0d1b3e; flex: 1; letter-spacing: -.01em; }
+.filters-bar select, .topbar select { font-size: 12px; padding: 6px 10px; border: 1px solid #dde1ec; border-radius: 7px; background: #fff; color: #444; cursor: pointer; font-family: inherit; outline: none; }
+.filters-bar select:focus, .topbar select:focus { border-color: #4f8ef7; }
+.search-input { font-size: 12px; padding: 6px 12px 6px 30px; border: 1px solid #dde1ec; border-radius: 7px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center; color: #444; font-family: inherit; outline: none; width: 180px; }
+.search-input:focus { border-color: #4f8ef7; }
+
+/* ── Stats grid ── */
+.stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: #fff; border: 1px solid #e2e6f0; border-radius: 12px; padding: 16px 18px; position: relative; overflow: hidden; }
+.stat-card.accent { background: linear-gradient(135deg,#0d1b3e,#1a2f5a); border-color: #0d1b3e; }
+.stat-card::after { content: ''; position: absolute; right: -10px; bottom: -10px; width: 60px; height: 60px; border-radius: 50%; background: rgba(79,142,247,.07); }
+.stat-label { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.stat-card.accent .stat-label { color: rgba(255,255,255,.4); }
+.stat-val { font-size: 28px; font-weight: 800; color: #0d1b3e; line-height: 1; letter-spacing: -.02em; }
+.stat-card.accent .stat-val { color: #fff; }
+.stat-sub { font-size: 11px; color: #bbb; margin-top: 5px; }
+.stat-card.accent .stat-sub { color: rgba(255,255,255,.28); }
+.stat-trend { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; margin-top: 5px; }
+.trend-up { background: #e3f5d4; color: #3a6a10; }
+.trend-down { background: #ffe5e5; color: #b02020; }
+.trend-flat { background: #f1f0ed; color: #666; }
+
+/* ── Cards ── */
+.card { background: #fff; border: 1px solid #e2e6f0; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+.card-head { padding: 14px 18px; border-bottom: 1px solid #f0f2f7; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-title { font-size: 11px; font-weight: 800; color: #0d1b3e; text-transform: uppercase; letter-spacing: .08em; flex: 1; }
+.card-body { padding: 16px 18px; }
+
+/* ── Buttons ── */
+.btn { padding: 8px 16px; border: 1px solid #d1d5e0; border-radius: 8px; background: #fff; color: #333; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .14s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { background: #f4f6fb; border-color: #b5bace; }
+.btn-primary { background: #0d1b3e; color: #fff; border-color: #0d1b3e; }
+.btn-primary:hover { background: #1a2f5a; }
+.btn-accent { background: linear-gradient(135deg,#4f8ef7,#6c63ff); color: #fff; border-color: transparent; }
+.btn-accent:hover { opacity: .9; }
+.btn-success { background: #e3f5d4; color: #3a6a10; border-color: #b5dd8a; }
+.btn-warning { background: #fff4e0; color: #9a5800; border-color: #fac775; }
+.btn-danger { background: #ffe5e5; color: #b02020; border-color: #f5b0b0; }
+.btn-sm { padding: 5px 11px; font-size: 11px; border-radius: 6px; }
+.del-btn { background: none; border: none; color: #bbb; font-size: 18px; cursor: pointer; padding: 2px 5px; border-radius: 4px; line-height: 1; }
+.del-btn:hover { color: #b02020; background: #ffe5e5; }
+
+/* ── Progress ── */
+.progress-wrap { height: 8px; background: #eef0f8; border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4f8ef7, #6c63ff); transition: width .5s; }
+.progress-txt { font-size: 11px; color: #999; margin-top: 5px; }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.b-dispo  { background: #e3f5d4; color: #3a6a10; } .b-dispo::before  { background: #5aaa20; }
+.b-charge { background: #ddeeff; color: #1560a8; } .b-charge::before { background: #4f8ef7; }
+.b-sur    { background: #ffe5e5; color: #b02020; } .b-sur::before    { background: #e04040; }
+.b-conge  { background: #f1f0ed; color: #666; }   .b-conge::before  { background: #999; }
+.b-crit   { background: #ffe5e5; color: #b02020; } .b-crit::before   { background: #e04040; }
+.b-med    { background: #fff4e0; color: #9a5800; } .b-med::before    { background: #f7a800; }
+.b-low    { background: #e3f5d4; color: #3a6a10; } .b-low::before    { background: #5aaa20; }
+.b-proj   { background: #eef3ff; color: #1560a8; border: 1px solid #c5d8fb; }
+
+/* ── Avatar ── */
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; color: #fff; }
+.avatar-lg { width: 44px; height: 44px; font-size: 16px; }
+.avatar-sm { width: 24px; height: 24px; font-size: 9px; }
+
+/* ── Tables ── */
+.soc-table { width: 100%; border-collapse: collapse; }
+.soc-table thead tr { background: #f4f5fb; border-bottom: 2px solid #e2e6f0; }
+.soc-table th { padding: 9px 14px; font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .07em; text-align: left; white-space: nowrap; }
+.soc-table td { padding: 11px 14px; font-size: 12px; border-bottom: 1px solid #f0f2f8; vertical-align: middle; }
+.soc-table tbody tr:hover { background: #f7f8fd; }
+.soc-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Charge bar ── */
+.charge-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 140px; }
+.charge-bar-bg { flex: 1; height: 7px; background: #eef0f8; border-radius: 4px; overflow: hidden; }
+.charge-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+.charge-ok   { background: linear-gradient(90deg,#4f8ef7,#6c63ff); }
+.charge-warn { background: linear-gradient(90deg,#f7a800,#f96800); }
+.charge-over { background: linear-gradient(90deg,#e04040,#b02020); }
+.charge-pct  { font-size: 11px; font-weight: 700; min-width: 34px; text-align: right; }
+.charge-ok-txt   { color: #1560a8; }
+.charge-warn-txt { color: #9a5800; }
+.charge-over-txt { color: #b02020; }
+
+/* ── Resource cards (vue équipe) ── */
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.resource-card { background: #fff; border: 1px solid #e2e6f0; border-radius: 12px; padding: 18px; cursor: pointer; transition: all .15s; }
+.resource-card:hover { border-color: #4f8ef7; box-shadow: 0 4px 16px rgba(79,142,247,.12); transform: translateY(-1px); }
+.resource-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.resource-card-info { flex: 1; min-width: 0; }
+.resource-card-name { font-size: 14px; font-weight: 800; color: #0d1b3e; letter-spacing: -.01em; }
+.resource-card-role { font-size: 11px; color: #888; margin-top: 2px; }
+.resource-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.resource-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.projects-stack { display: flex; gap: -4px; }
+.projects-stack .badge { font-size: 10px; margin-right: 4px; margin-bottom: 4px; }
+
+/* ── Individual view ── */
+.indiv-hero { background: linear-gradient(135deg,#0d1b3e,#1a2f5a); border-radius: 14px; padding: 24px; margin-bottom: 20px; color: #fff; display: flex; align-items: center; gap: 20px; position: relative; overflow: hidden; }
+.indiv-hero::after { content: ''; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; background: rgba(79,142,247,.12); }
+.indiv-hero::before { content: ''; position: absolute; right: 80px; bottom: -30px; width: 100px; height: 100px; border-radius: 50%; background: rgba(108,99,255,.1); }
+.indiv-hero-info { flex: 1; position: relative; z-index: 1; }
+.indiv-hero-name { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.indiv-hero-role { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 4px; }
+.indiv-hero-tags { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.indiv-tag { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); color: rgba(255,255,255,.8); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.indiv-hero-kpis { display: flex; gap: 24px; position: relative; z-index: 1; }
+.indiv-kpi { text-align: center; }
+.indiv-kpi-val { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.indiv-kpi-lbl { font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+
+.timeline-row { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+.timeline-task-name { font-size: 12px; font-weight: 600; color: #1a1a2e; min-width: 160px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timeline-bar-wrap { flex: 1; height: 26px; background: #f4f5fb; border-radius: 6px; overflow: hidden; position: relative; }
+.timeline-bar { position: absolute; height: 100%; border-radius: 6px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; min-width: 4px; }
+.timeline-months { display: flex; margin-bottom: 6px; padding-left: 170px; }
+.timeline-month { flex: 1; font-size: 9px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .06em; text-align: center; }
+
+/* ── Metier view ── */
+.metier-section { margin-bottom: 24px; }
+.metier-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #f4f5fb; border-radius: 10px; margin-bottom: 12px; cursor: pointer; border: 1px solid #e2e6f0; }
+.metier-header:hover { border-color: #4f8ef7; background: #eef3ff; }
+.metier-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.metier-name { font-size: 14px; font-weight: 800; color: #0d1b3e; flex: 1; }
+.metier-count { font-size: 11px; color: #888; }
+.metier-charge-global { display: flex; align-items: center; gap: 8px; min-width: 200px; }
+
+/* ── Charge hebdo chart ── */
+.chart-container { position: relative; width: 100%; overflow-x: auto; }
+.chart-svg { width: 100%; min-width: 600px; }
+
+/* ── Project view ── */
+.project-card { background: #fff; border: 1px solid #e2e6f0; border-radius: 12px; padding: 0; overflow: hidden; margin-bottom: 16px; }
+.project-card-header { padding: 16px 18px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #f0f2f8; }
+.project-color-bar { width: 5px; height: 44px; border-radius: 3px; flex-shrink: 0; }
+.project-card-title { font-size: 15px; font-weight: 800; color: #0d1b3e; letter-spacing: -.01em; }
+.project-card-sub { font-size: 11px; color: #888; margin-top: 2px; }
+.project-body { padding: 16px 18px; }
+.project-team-row { display: flex; gap: -8px; margin-bottom: 12px; flex-wrap: wrap; gap: 6px; }
+.project-stat-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.project-stat { text-align: left; }
+.project-stat-val { font-size: 18px; font-weight: 800; color: #0d1b3e; }
+.project-stat-lbl { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+
+/* ── Modal ── */
+.modal-bd { display: none; position: fixed; inset: 0; background: rgba(13,27,62,.4); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+.modal-bd.open { display: flex; }
+.modal { background: #fff; border-radius: 14px; width: 500px; max-width: 95vw; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(13,27,62,.25); }
+.modal-head { padding: 18px 20px; border-bottom: 1px solid #f0f2f8; display: flex; align-items: center; justify-content: space-between; }
+.modal-head h3 { font-size: 15px; font-weight: 800; color: #0d1b3e; letter-spacing: -.01em; }
+.modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+.modal-foot { padding: 14px 20px; border-top: 1px solid #f0f2f8; display: flex; justify-content: flex-end; gap: 8px; }
+.form-row { margin-bottom: 14px; }
+.form-lbl { display: block; font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5e0; border-radius: 8px; font-size: 13px; font-family: inherit; color: #1a1a2e; outline: none; transition: border-color .12s; background: #fff; }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: #4f8ef7; box-shadow: 0 0 0 3px rgba(79,142,247,.1); }
+.form-row textarea { resize: vertical; min-height: 80px; }
+.form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── Toast ── */
+.toast { position: fixed; bottom: 24px; right: 24px; background: #0d1b3e; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; display: none; z-index: 200; box-shadow: 0 8px 24px rgba(13,27,62,.3); animation: toastIn .2s ease; }
+.toast.visible { display: block; }
+.toast.success { background: #2d6a10; }
+.toast.error { background: #b02020; }
+@keyframes toastIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ── Allocation heatmap ── */
+.alloc-grid-wrap { overflow-x: auto; }
+.alloc-grid { display: grid; min-width: 700px; }
+.alloc-hdr { background: #f4f5fb; padding: 6px; text-align: center; font-size: 9px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid #e2e6f0; border-right: 1px solid #eef0f8; white-space: nowrap; }
+.alloc-hdr.today-col { background: #fff4e0; color: #9a5800; }
+.alloc-name { background: #fff; padding: 7px 14px; font-size: 12px; font-weight: 600; color: #0d1b3e; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f2f8; border-right: 2px solid #e2e6f0; white-space: nowrap; }
+.alloc-cell { background: #fff; border-bottom: 1px solid #f0f2f8; border-right: 1px solid #f4f5fa; display: flex; align-items: center; justify-content: center; min-height: 36px; font-size: 10px; font-weight: 700; cursor: default; transition: filter .1s; }
+.alloc-cell:hover { filter: brightness(.94); }
+.alloc-0   { background: #f8f9fd; color: #ddd; }
+.alloc-l20 { background: #e8f5ff; color: #1560a8; }
+.alloc-l50 { background: #ddeeff; color: #1560a8; }
+.alloc-l80 { background: #d4f0e0; color: #0e6b50; }
+.alloc-l100{ background: #d0f5e0; color: #0a5c40; }
+.alloc-over{ background: #ffe5e5; color: #b02020; }
+
+/* ── Legend ── */
+.alloc-legend { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.alloc-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #666; }
+.alloc-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .sidebar { display: none; }
+}
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 48px 24px; color: #bbb; }
+.empty-state-ico { font-size: 40px; margin-bottom: 12px; }
+.empty-state-title { font-size: 15px; font-weight: 700; color: #999; margin-bottom: 6px; }
+.empty-state-sub { font-size: 12px; }
+
+/* ── Charge semaine view ── */
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.cal-view-toggle { display: flex; background: #f4f5fb; border-radius: 8px; padding: 3px; gap: 2px; }
+.cal-view-btn { padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; background: none; border: none; color: #888; cursor: pointer; font-family: inherit; transition: all .14s; }
+.cal-view-btn.active { background: #fff; color: #0d1b3e; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+/* ── Tag pill ── */
+.tag-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #eef3ff; color: #1560a8; border: 1px solid #c5d8fb; margin-right: 4px; margin-bottom: 4px; }
+
+/* ── Mini donut ── */
+.mini-ring { transform: rotate(-90deg); }
+
+/* ── Import / Export ── */
+.import-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.import-zone { border: 2px dashed #d1d5e0; border-radius: 12px; padding: 20px 16px; text-align: center; cursor: pointer; transition: all .15s; background: #fafbff; position: relative; }
+.import-zone input[type=file] { display: none; }
+.import-zone:hover { border-color: #4f8ef7; background: #eef3ff; }
+.import-zone.drag-over { border-color: #4f8ef7; background: #ddeeff; border-style: solid; }
+.import-zone-ico { font-size: 30px; margin-bottom: 8px; }
+.import-zone-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.import-zone-sub { font-size: 11px; color: #888; margin-bottom: 10px; line-height: 1.5; }
+.import-zone-format { font-family: 'DM Mono', 'Consolas', monospace; font-size: 10px; background: #f0f2f8; border: 1px solid #e0e4f0; border-radius: 6px; padding: 7px 10px; text-align: left; color: #555; line-height: 1.6; white-space: pre; overflow-x: auto; margin-top: 6px; }
+.import-log { background: #f4f5fb; border: 1px solid #e2e6f0; border-radius: 8px; padding: 12px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: #555; min-height: 44px; line-height: 1.7; max-height: 120px; overflow-y: auto; }
+.import-log .log-ok   { color: #3a6a10; }
+.import-log .log-warn { color: #9a5800; }
+.import-log .log-err  { color: #b02020; }
+.export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.export-card { background: #fafbff; border: 1px solid #e2e6f0; border-radius: 10px; padding: 16px 14px; text-align: center; cursor: pointer; transition: all .15s; }
+.export-card:hover { border-color: #4f8ef7; background: #eef3ff; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(79,142,247,.1); }
+.export-card-ico { font-size: 26px; margin-bottom: 8px; }
+.export-card-title { font-size: 12px; font-weight: 700; color: #0d1b3e; margin-bottom: 3px; }
+.export-card-sub { font-size: 10px; color: #aaa; }
+.danger-zone { border: 1px solid #fde8e8; border-radius: 12px; overflow: hidden; }
+.danger-zone-head { background: #fff8f8; padding: 14px 18px; border-bottom: 1px solid #fde8e8; }
+.danger-zone-body { padding: 16px 18px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-chip">
+        <div class="logo-icon">R&D</div>
+        <div>
+          <div class="logo-title">Resource Manager</div>
+          <div class="logo-sub" style="font-size:9px;">R&amp;D · v1.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-lbl">Vues principales</div>
+      <div class="nav active" onclick="showPanel('dashboard')" id="nav-dashboard">
+        <span class="nav-ico">📊</span> Dashboard
+      </div>
+      <div class="nav" onclick="showPanel('projet')" id="nav-projet">
+        <span class="nav-ico">🗂️</span> Vue Projet
+      </div>
+      <div class="nav" onclick="showPanel('equipe')" id="nav-equipe">
+        <span class="nav-ico">👥</span> Vue Équipe
+      </div>
+      <div class="nav" onclick="showPanel('individuel')" id="nav-individuel">
+        <span class="nav-ico">👤</span> Vue Individuelle
+      </div>
+      <div class="nav" onclick="showPanel('metier')" id="nav-metier">
+        <span class="nav-ico">🔧</span> Vue Métier
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-lbl">Charge & Capacité</div>
+      <div class="nav" onclick="showPanel('charge')" id="nav-charge">
+        <span class="nav-ico">📅</span> Charge Hebdo
+      </div>
+      <div class="nav" onclick="showPanel('allocation')" id="nav-allocation">
+        <span class="nav-ico">🎯</span> Allocations
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-lbl">Paramètres</div>
+      <div class="nav" onclick="showPanel('ressources')" id="nav-ressources">
+        <span class="nav-ico">⚙️</span> Ressources
+      </div>
+      <div class="nav" onclick="showPanel('projets-config')" id="nav-projets-config">
+        <span class="nav-ico">📋</span> Projets
+      </div>
+      <div class="nav" onclick="showPanel('import')" id="nav-import">
+        <span class="nav-ico">⇅</span> Import / Export
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="sidebar-ver">R&D Resource Mgr</span>
+      <span class="sidebar-ver">v1.0</span>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <select id="filter-period" onchange="onFilterChange()">
+          <option value="all">Toute la période</option>
+          <option value="q1">Q1 2025</option>
+          <option value="q2">Q2 2025</option>
+          <option value="q3">Q3 2025</option>
+          <option value="q4">Q4 2025</option>
+        </select>
+        <div class="sep"></div>
+        <button class="btn btn-accent btn-sm" onclick="openModal('resource')">+ Ressource</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('projet')">+ Projet</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-grid" id="dash-stats"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div class="card">
+            <div class="card-head"><span class="card-title">⚡ Charge par projet</span></div>
+            <div class="card-body" id="dash-projet-chart"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">🔧 Charge par métier</span></div>
+            <div class="card-body" id="dash-metier-chart"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">⚠️ Alertes surcharge</span>
+            <span id="dash-alert-count" style="font-size:11px;font-weight:700;background:#ffe5e5;color:#b02020;padding:2px 8px;border-radius:10px;">0</span>
+          </div>
+          <div class="card-body" id="dash-alerts"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">👥 Aperçu ressources</span>
+            <button class="btn btn-sm" onclick="showPanel('equipe')">Voir tout →</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <table class="soc-table" id="dash-resources-table">
+              <thead><tr>
+                <th>Ressource</th><th>Métier</th><th>Projet(s)</th><th>Charge</th><th>Statut</th>
+              </tr></thead>
+              <tbody id="dash-resources-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VUE PROJET ═══ -->
+      <div class="panel" id="panel-projet">
+        <div class="filters-bar">
+          <h2>Vue Projet</h2>
+          <input class="search-input" id="search-projet" placeholder="Rechercher un projet…" oninput="renderProjet()">
+          <button class="btn btn-primary btn-sm" onclick="openModal('projet')">+ Projet</button>
+        </div>
+        <div id="projet-list"></div>
+      </div>
+
+      <!-- ═══ VUE ÉQUIPE ═══ -->
+      <div class="panel" id="panel-equipe">
+        <div class="filters-bar">
+          <h2>Vue Équipe</h2>
+          <input class="search-input" id="search-equipe" placeholder="Rechercher…" oninput="renderEquipe()">
+          <select id="filter-metier-equipe" onchange="renderEquipe()">
+            <option value="all">Tous les métiers</option>
+          </select>
+          <button class="btn btn-accent btn-sm" onclick="openModal('resource')">+ Ressource</button>
+        </div>
+        <div class="team-grid" id="team-grid"></div>
+      </div>
+
+      <!-- ═══ VUE INDIVIDUELLE ═══ -->
+      <div class="panel" id="panel-individuel">
+        <div class="filters-bar">
+          <h2>Vue Individuelle</h2>
+          <select id="sel-individu" onchange="renderIndividuel()">
+            <option value="">— Sélectionner une ressource —</option>
+          </select>
+        </div>
+        <div id="individuel-content">
+          <div class="empty-state">
+            <div class="empty-state-ico">👤</div>
+            <div class="empty-state-title">Sélectionnez une ressource</div>
+            <div class="empty-state-sub">Choisissez un membre dans la liste ci-dessus</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VUE MÉTIER ═══ -->
+      <div class="panel" id="panel-metier">
+        <div class="filters-bar">
+          <h2>Vue par Métier</h2>
+        </div>
+        <div id="metier-content"></div>
+      </div>
+
+      <!-- ═══ CHARGE HEBDO ═══ -->
+      <div class="panel" id="panel-charge">
+        <div class="filters-bar">
+          <h2>Charge Hebdomadaire</h2>
+          <div class="cal-view-toggle">
+            <button class="cal-view-btn active" id="charge-btn-ressource" onclick="setChargeMode('ressource')">Par Ressource</button>
+            <button class="cal-view-btn" id="charge-btn-projet" onclick="setChargeMode('projet')">Par Projet</button>
+          </div>
+          <div class="week-nav">
+            <button class="btn btn-sm" onclick="chargeShift(-8)">← -8sem</button>
+            <button class="btn btn-sm" onclick="chargeShift(-4)">← -4sem</button>
+            <span id="charge-range-lbl" style="font-size:12px;font-weight:600;color:#555;min-width:120px;text-align:center;">—</span>
+            <button class="btn btn-sm" onclick="chargeShift(4)">+4sem →</button>
+            <button class="btn btn-sm" onclick="chargeShift(8)">+8sem →</button>
+            <button class="btn btn-sm" onclick="chargeGoToday()">Aujourd'hui</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;">
+          <div class="alloc-grid-wrap"><div id="charge-grid"></div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;" class="alloc-legend">
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-0" style="border:1px solid #e0e4f0;"></div>Libre</div>
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-l20"></div>≤20%</div>
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-l50"></div>≤50%</div>
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-l80"></div>≤80%</div>
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-l100"></div>100%</div>
+          <div class="alloc-legend-item"><div class="alloc-legend-dot alloc-over"></div>&gt;100%</div>
+        </div>
+      </div>
+
+      <!-- ═══ ALLOCATIONS ═══ -->
+      <div class="panel" id="panel-allocation">
+        <div class="filters-bar">
+          <h2>Allocations</h2>
+          <select id="filter-alloc-projet" onchange="renderAllocation()">
+            <option value="all">Tous les projets</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0;">
+          <div id="alloc-content"></div>
+        </div>
+      </div>
+
+      <!-- ═══ RESSOURCES ═══ -->
+      <div class="panel" id="panel-ressources">
+        <div class="filters-bar">
+          <h2>Gestion des Ressources</h2>
+          <button class="btn btn-accent btn-sm" onclick="openModal('resource')">+ Ajouter</button>
+        </div>
+        <div class="card" style="padding:0;">
+          <table class="soc-table">
+            <thead><tr>
+              <th>Nom</th><th>Rôle</th><th>Métier</th><th>Email</th><th>Capacité</th><th style="width:80px;"></th>
+            </tr></thead>
+            <tbody id="ressources-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══ PROJETS CONFIG ═══ -->
+      <div class="panel" id="panel-projets-config">
+        <div class="filters-bar">
+          <h2>Gestion des Projets</h2>
+          <button class="btn btn-primary btn-sm" onclick="openModal('projet')">+ Nouveau projet</button>
+        </div>
+        <div class="card" style="padding:0;">
+          <table class="soc-table">
+            <thead><tr>
+              <th>Projet</th><th>Chef de projet</th><th>Période</th><th>Ressources</th><th>Avancement</th><th style="width:80px;"></th>
+            </tr></thead>
+            <tbody id="projets-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══ IMPORT / EXPORT ═══ -->
+      <div class="panel" id="panel-import">
+        <div class="filters-bar"><h2>Import / Export</h2></div>
+
+        <!-- Import -->
+        <div class="card">
+          <div class="card-head"><span class="card-title">↑ Importer des données</span></div>
+          <div class="card-body">
+            <div class="import-grid">
+
+              <!-- Zone Ressources CSV -->
+              <div>
+                <div style="font-size:11px;font-weight:800;color:#0d1b3e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">👤 Ressources (CSV)</div>
+                <div class="import-zone" id="drop-resources"
+                     onclick="g('file-resources').click()"
+                     ondragover="dragOver(event,'drop-resources')"
+                     ondragleave="dragLeave('drop-resources')"
+                     ondrop="dropCSV(event,'resources')">
+                  <input type="file" id="file-resources" accept=".csv" onchange="importCSV(this,'resources')">
+                  <div class="import-zone-ico">👥</div>
+                  <div class="import-zone-title">Glisser / Cliquer pour importer</div>
+                  <div class="import-zone-sub">CSV des ressources<br>Remplace toute l'équipe actuelle</div>
+                  <div class="import-zone-format">name,role,metier,email,capacity
+Alice Martin,SoC Architect,Architecture,alice@chip.io,100
+Bruno Leclerc,RTL Designer,Design RTL,bruno@chip.io,80</div>
+                </div>
+              </div>
+
+              <!-- Zone Projets CSV -->
+              <div>
+                <div style="font-size:11px;font-weight:800;color:#0d1b3e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">🗂️ Projets (CSV)</div>
+                <div class="import-zone" id="drop-projects"
+                     onclick="g('file-projects').click()"
+                     ondragover="dragOver(event,'drop-projects')"
+                     ondragleave="dragLeave('drop-projects')"
+                     ondrop="dropCSV(event,'projects')">
+                  <input type="file" id="file-projects" accept=".csv" onchange="importCSV(this,'projects')">
+                  <div class="import-zone-ico">📋</div>
+                  <div class="import-zone-title">Glisser / Cliquer pour importer</div>
+                  <div class="import-zone-sub">CSV des projets<br>Remplace tous les projets actuels</div>
+                  <div class="import-zone-format">name,lead_name,start,end,progress,color,desc
+SoC Gen5,Alice Martin,2025-01-06,2025-12-31,38,#4f8ef7,Description
+GPU Sub,Bruno Leclerc,2025-03-01,2025-10-31,22,#6c63ff,Description</div>
+                </div>
+              </div>
+
+              <!-- Zone Allocations CSV -->
+              <div>
+                <div style="font-size:11px;font-weight:800;color:#0d1b3e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">🎯 Allocations (CSV)</div>
+                <div class="import-zone" id="drop-allocs"
+                     onclick="g('file-allocs').click()"
+                     ondragover="dragOver(event,'drop-allocs')"
+                     ondragleave="dragLeave('drop-allocs')"
+                     ondrop="dropCSV(event,'allocs')">
+                  <input type="file" id="file-allocs" accept=".csv" onchange="importCSV(this,'allocs')">
+                  <div class="import-zone-ico">🎯</div>
+                  <div class="import-zone-title">Glisser / Cliquer pour importer</div>
+                  <div class="import-zone-sub">CSV des allocations par projet/ressource<br>Fusionne avec les données existantes</div>
+                  <div class="import-zone-format">project_name,resource_name,allocation
+SoC Gen5,Alice Martin,60
+SoC Gen5,Bruno Leclerc,80</div>
+                </div>
+              </div>
+
+              <!-- Zone JSON complet -->
+              <div>
+                <div style="font-size:11px;font-weight:800;color:#0d1b3e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">📦 Sauvegarde complète (JSON)</div>
+                <div class="import-zone" id="drop-json"
+                     ondragover="dragOver(event,'drop-json')"
+                     ondragleave="dragLeave('drop-json')"
+                     ondrop="dropJSON(event)"
+                     style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                  <input type="file" id="file-json" accept=".json" onchange="importJSONFile(this)">
+                  <input type="file" id="file-json-merge" accept=".json" style="display:none;" onchange="importJSONMerge(this)">
+                  <div class="import-zone-ico">📦</div>
+                  <div class="import-zone-title">Sauvegarde JSON complète</div>
+                  <div class="import-zone-sub">Restaure ou fusionne une sauvegarde</div>
+                  <div style="display:flex;gap:8px;margin-top:4px;">
+                    <span onclick="event.stopPropagation();g('file-json').click()" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#b02020;background:#fff0f0;border:1px solid #f5c0c0;padding:5px 12px;border-radius:7px;cursor:pointer;">⚠ Remplacer</span>
+                    <span onclick="event.stopPropagation();g('file-json-merge').click()" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#3a6a10;background:#e3f5d4;border:1px solid #8fcc6a;padding:5px 12px;border-radius:7px;cursor:pointer;">⇌ Merger</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div style="margin-bottom:8px;font-size:10px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.08em;">Journal d'import</div>
+            <div class="import-log" id="import-log">Prêt. Glissez un fichier ou cliquez sur une zone pour importer.</div>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="card">
+          <div class="card-head"><span class="card-title">↓ Exporter les données</span></div>
+          <div class="card-body">
+            <div class="export-grid">
+              <div class="export-card" onclick="exportCSV('resources')">
+                <div class="export-card-ico">👥</div>
+                <div class="export-card-title">Ressources CSV</div>
+                <div class="export-card-sub">Export de toute l'équipe</div>
+              </div>
+              <div class="export-card" onclick="exportCSV('projects')">
+                <div class="export-card-ico">🗂️</div>
+                <div class="export-card-title">Projets CSV</div>
+                <div class="export-card-sub">Tous les projets R&D</div>
+              </div>
+              <div class="export-card" onclick="exportCSV('allocs')">
+                <div class="export-card-ico">🎯</div>
+                <div class="export-card-title">Allocations CSV</div>
+                <div class="export-card-sub">Matrice projet × ressource</div>
+              </div>
+              <div class="export-card" onclick="exportJSON()" style="border-color:#c5d8fb;background:#eef3ff;">
+                <div class="export-card-ico">📦</div>
+                <div class="export-card-title" style="color:#1560a8;">Sauvegarde JSON</div>
+                <div class="export-card-sub">Export complet du projet</div>
+              </div>
+              <div class="export-card" onclick="exportCSV('charges')" style="border-color:#d4f0e0;background:#f0fff8;">
+                <div class="export-card-ico">📊</div>
+                <div class="export-card-title" style="color:#0e6b50;">Rapport de charge</div>
+                <div class="export-card-sub">Charge par ressource</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modèles CSV -->
+        <div class="card">
+          <div class="card-head"><span class="card-title">📄 Télécharger les modèles CSV</span></div>
+          <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-warning btn-sm" onclick="downloadTemplate('resources')">↓ Modèle ressources.csv</button>
+            <button class="btn btn-warning btn-sm" onclick="downloadTemplate('projects')">↓ Modèle projets.csv</button>
+            <button class="btn btn-warning btn-sm" onclick="downloadTemplate('allocs')">↓ Modèle allocations.csv</button>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="danger-zone">
+          <div class="danger-zone-head">
+            <div style="font-size:11px;font-weight:800;color:#b02020;text-transform:uppercase;letter-spacing:.07em;">⚠ Zone de réinitialisation</div>
+          </div>
+          <div class="danger-zone-body">
+            <div style="font-size:12px;color:#888;margin-bottom:14px;">Ces actions sont irréversibles. Exportez une sauvegarde JSON avant de continuer.</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-danger" onclick="confirmReset('resources')">⊘ Reset Ressources</button>
+              <button class="btn btn-sm btn-danger" onclick="confirmReset('projects')">⊘ Reset Projets</button>
+              <button class="btn btn-sm btn-danger" onclick="confirmReset('all')" style="font-weight:800;">⊘ Reset complet</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- shell -->
+
+<!-- Modal -->
+<div class="modal-bd" id="modal-bd" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div id="modal-inner"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'rnd_resource_mgr_v1';
+
+const METIERS = ['Architecture', 'Design RTL', 'Vérification', 'Software BSP', 'DFT', 'Physical Design', 'Validation'];
+const PROJECT_COLORS = ['#4f8ef7','#6c63ff','#f7a800','#e04040','#5aaa20','#00bcd4','#ff6b6b','#a29bfe'];
+
+const DEFAULT_DATA = {
+  resources: [
+    { id:'r1', name:'Alice Martin', role:'SoC Architect', metier:'Architecture', email:'alice@chip.io', capacity:100, color:'#4f8ef7' },
+    { id:'r2', name:'Bruno Leclerc', role:'RTL Designer', metier:'Design RTL', email:'bruno@chip.io', capacity:100, color:'#6c63ff' },
+    { id:'r3', name:'Camille Dupont', role:'Vérification Lead', metier:'Vérification', email:'camille@chip.io', capacity:100, color:'#f7a800' },
+    { id:'r4', name:'David Chen', role:'BSP Engineer', metier:'Software BSP', email:'david@chip.io', capacity:100, color:'#e04040' },
+    { id:'r5', name:'Eva Schmidt', role:'DFT Engineer', metier:'DFT', email:'eva@chip.io', capacity:100, color:'#5aaa20' },
+    { id:'r6', name:'François Petit', role:'PD Engineer', metier:'Physical Design', email:'francois@chip.io', capacity:100, color:'#00bcd4' },
+    { id:'r7', name:'Giulia Romano', role:'RTL Designer', metier:'Design RTL', email:'giulia@chip.io', capacity:80, color:'#a29bfe' },
+    { id:'r8', name:'Hugo Bernard', role:'Validation Eng.', metier:'Validation', email:'hugo@chip.io', capacity:100, color:'#ff6b6b' },
+    { id:'r9', name:'Isabelle Morel', role:'Arch. Mémoire', metier:'Architecture', email:'isabelle@chip.io', capacity:100, color:'#fd79a8' },
+    { id:'r10', name:'Julien Faure', role:'RTL Designer', metier:'Design RTL', email:'julien@chip.io', capacity:100, color:'#55efc4' },
+  ],
+  projects: [
+    { id:'p1', name:'SoC Gen5 CPU', lead:'r1', start:'2025-01-06', end:'2025-12-31', progress:38, color:'#4f8ef7',
+      desc:'Intégration CPU complex Gen5 avec 8 cœurs haute performance.',
+      allocations: { r1:60, r2:80, r3:50, r9:100 } },
+    { id:'p2', name:'GPU Subsystem', lead:'r2', start:'2025-03-01', end:'2025-10-31', progress:22, color:'#6c63ff',
+      desc:'Design et vérification du sous-système GPU embarqué.',
+      allocations: { r2:20, r3:50, r7:80, r8:60 } },
+    { id:'p3', name:'Security Engine', lead:'r4', start:'2025-02-01', end:'2025-08-31', progress:65, color:'#f7a800',
+      desc:'Module de sécurité matérielle : crypto, secure boot, TEE.',
+      allocations: { r4:100, r5:60, r6:40 } },
+    { id:'p4', name:'Memory Controller', lead:'r9', start:'2025-01-15', end:'2025-09-30', progress:51, color:'#5aaa20',
+      desc:'Contrôleur mémoire LPDDR5X avec correction ECC.',
+      allocations: { r9:0, r6:60, r10:80 } },
+    { id:'p5', name:'Interconnect NOC', lead:'r1', start:'2025-04-01', end:'2025-11-30', progress:10, color:'#00bcd4',
+      desc:'Network-on-chip pour la communication inter-blocs.',
+      allocations: { r1:40, r10:20, r7:20 } },
+  ]
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let S = loadData();
+let CHARGE_OFFSET = 0; // weeks offset
+let CHARGE_MODE = 'ressource';
+
+function loadData(){
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if(d) return JSON.parse(d);
+  } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+function saveData(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e){}
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function g(id){ return document.getElementById(id); }
+function uid(){ return 'id_' + Math.random().toString(36).slice(2,9); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(name){ return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+
+function avatarStyle(res){
+  const colors = ['#4f8ef7','#6c63ff','#f7a800','#e04040','#5aaa20','#00bcd4','#ff6b6b','#a29bfe','#fd79a8','#55efc4'];
+  const idx = res ? (res.name.charCodeAt(0) % colors.length) : 0;
+  return `background:${res && res.color ? res.color : colors[idx]};`;
+}
+
+function showToast(msg, type=''){
+  const t = g('toast');
+  t.textContent = msg;
+  t.className = 'toast visible' + (type ? ' '+type : '');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>{ t.classList.remove('visible'); }, 2800);
+}
+
+function getResource(id){ return S.resources.find(r=>r.id===id); }
+function getProject(id){ return S.projects.find(p=>p.id===id); }
+
+function getResourceCharge(rid){
+  let total = 0;
+  S.projects.forEach(p => {
+    if(p.allocations && p.allocations[rid]) total += p.allocations[rid];
+  });
+  return total;
+}
+
+function chargeClass(pct){
+  if(pct > 100) return 'alloc-over';
+  if(pct >= 80) return 'alloc-l100';
+  if(pct >= 50) return 'alloc-l80';
+  if(pct >= 20) return 'alloc-l50';
+  if(pct > 0)  return 'alloc-l20';
+  return 'alloc-0';
+}
+
+function chargeTxtClass(pct){
+  if(pct > 100) return 'charge-over-txt';
+  if(pct > 80) return 'charge-warn-txt';
+  return 'charge-ok-txt';
+}
+
+function chargeBarClass(pct){
+  if(pct > 100) return 'charge-over';
+  if(pct > 80) return 'charge-warn';
+  return 'charge-ok';
+}
+
+function statusBadge(charge){
+  if(charge > 100) return '<span class="badge b-sur">Surchargé</span>';
+  if(charge >= 80) return '<span class="badge b-charge">Chargé</span>';
+  if(charge >= 20) return '<span class="badge b-dispo">Disponible</span>';
+  return '<span class="badge b-conge">Libre</span>';
+}
+
+// Monday of current week + offset weeks
+function getWeekStart(offset){
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day===0?-6:1);
+  d.setDate(diff + offset*7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+}
+
+function fmtDateISO(d){
+  return d.toISOString().slice(0,10);
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+const PANEL_TITLES = {
+  dashboard:'Dashboard', projet:'Vue Projet', equipe:'Vue Équipe',
+  individuel:'Vue Individuelle', metier:'Vue par Métier',
+  charge:'Charge Hebdomadaire', allocation:'Allocations',
+  ressources:'Gestion des Ressources', 'projets-config':'Gestion des Projets',
+  import:'Import / Export'
+};
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));
+  const panel = g('panel-'+id);
+  if(panel) panel.classList.add('active');
+  const nav = g('nav-'+id);
+  if(nav) nav.classList.add('active');
+  g('topbar-title').textContent = PANEL_TITLES[id] || id;
+  renderPanel(id);
+}
+
+function renderPanel(id){
+  switch(id){
+    case 'dashboard':     renderDashboard(); break;
+    case 'projet':        renderProjet(); break;
+    case 'equipe':        renderEquipe(); break;
+    case 'individuel':    renderIndividuelSelects(); break;
+    case 'metier':        renderMetier(); break;
+    case 'charge':        renderCharge(); break;
+    case 'allocation':    renderAllocation(); break;
+    case 'ressources':    renderRessources(); break;
+    case 'projets-config': renderProjetsConfig(); break;
+    case 'import':        renderImport(); break;
+  }
+}
+
+function onFilterChange(){ renderDashboard(); }
+
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard(){
+  // Stats
+  const total = S.resources.length;
+  const surcharges = S.resources.filter(r=>getResourceCharge(r.id)>100).length;
+  const libres = S.resources.filter(r=>getResourceCharge(r.id)<20).length;
+  const projetsActifs = S.projects.filter(p=>p.progress<100).length;
+  const avgProgress = Math.round(S.projects.reduce((a,p)=>a+p.progress,0)/Math.max(S.projects.length,1));
+
+  g('dash-stats').innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">Ressources</div>
+      <div class="stat-val">${total}</div>
+      <div class="stat-sub">${S.resources.length} membres actifs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Projets actifs</div>
+      <div class="stat-val">${projetsActifs}</div>
+      <div class="stat-sub">${S.projects.length} au total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Surchargés</div>
+      <div class="stat-val" style="color:${surcharges>0?'#b02020':'#3a6a10'}">${surcharges}</div>
+      <div class="stat-trend ${surcharges>0?'trend-down':'trend-up'}">${surcharges>0?'⚠ Attention':'✓ OK'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Disponibles</div>
+      <div class="stat-val" style="color:#3a6a10">${libres}</div>
+      <div class="stat-sub">charge &lt; 20%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avancement moy.</div>
+      <div class="stat-val">${avgProgress}%</div>
+      <div class="progress-wrap" style="margin-top:8px;"><div class="progress-bar" style="width:${avgProgress}%"></div></div>
+    </div>
+  `;
+
+  // Projet chart
+  const projBars = S.projects.map(p=>{
+    const totalAlloc = Object.values(p.allocations||{}).reduce((a,v)=>a+v,0);
+    const ressCount = Object.keys(p.allocations||{}).filter(k=>(p.allocations[k]||0)>0).length;
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:600;color:#0d1b3e;display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${p.color};flex-shrink:0;display:inline-block;"></span>
+          ${esc(p.name)}
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#555;">${p.progress}%</div>
+      </div>
+      <div class="progress-wrap" style="height:10px;">
+        <div class="progress-bar" style="width:${p.progress}%;background:${p.color};"></div>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:3px;">${ressCount} ressource${ressCount>1?'s':''} allouée${ressCount>1?'s':''}</div>
+    </div>`;
+  }).join('');
+  g('dash-projet-chart').innerHTML = projBars;
+
+  // Metier chart
+  const metierMap = {};
+  S.resources.forEach(r=>{
+    if(!metierMap[r.metier]) metierMap[r.metier] = { count:0, chargeSum:0 };
+    metierMap[r.metier].count++;
+    metierMap[r.metier].chargeSum += getResourceCharge(r.id);
+  });
+  const metierBars = Object.entries(metierMap).map(([m,d])=>{
+    const avgCharge = Math.round(d.chargeSum / d.count);
+    const cls = chargeBarClass(avgCharge);
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:600;color:#0d1b3e;">${esc(m)}</div>
+        <div style="font-size:11px;font-weight:700;" class="${chargeTxtClass(avgCharge)}">${avgCharge}%</div>
+      </div>
+      <div class="charge-bar-bg">
+        <div class="charge-bar-fill ${cls}" style="width:${Math.min(avgCharge,130)}%;"></div>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px;">${d.count} personne${d.count>1?'s':''}</div>
+    </div>`;
+  }).join('');
+  g('dash-metier-chart').innerHTML = metierBars;
+
+  // Alerts
+  const alerts = S.resources.filter(r=>getResourceCharge(r.id)>100);
+  g('dash-alert-count').textContent = alerts.length;
+  if(alerts.length===0){
+    g('dash-alerts').innerHTML = '<div class="empty-state" style="padding:20px;"><div style="font-size:24px;">✅</div><div style="font-size:13px;color:#3a6a10;font-weight:700;margin-top:8px;">Aucune surcharge détectée</div></div>';
+  } else {
+    g('dash-alerts').innerHTML = alerts.map(r=>{
+      const charge = getResourceCharge(r.id);
+      const projs = S.projects.filter(p=>(p.allocations||{})[r.id]>0).map(p=>
+        `<span class="tag-pill" style="background:${p.color}22;color:${p.color};border-color:${p.color}44;">${esc(p.name)}</span>`
+      ).join('');
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f2f8;">
+        <div class="avatar" style="${avatarStyle(r)}">${initials(r.name)}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:#0d1b3e;">${esc(r.name)}</div>
+          <div style="margin-top:4px;">${projs}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="charge-bar-wrap" style="justify-content:flex-end;">
+            <div class="charge-bar-bg" style="width:120px;">
+              <div class="charge-bar-fill charge-over" style="width:${Math.min(charge,130)}%;"></div>
+            </div>
+            <span class="charge-pct charge-over-txt">${charge}%</span>
+          </div>
+          <span class="badge b-sur" style="margin-top:4px;">Surchargé +${charge-100}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Resource table
+  g('dash-resources-tbody').innerHTML = S.resources.slice(0,8).map(r=>{
+    const charge = getResourceCharge(r.id);
+    const projs = S.projects.filter(p=>(p.allocations||{})[r.id]>0);
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>
+        <div><div style="font-weight:600;">${esc(r.name)}</div><div style="font-size:10px;color:#aaa;">${esc(r.role)}</div></div>
+      </div></td>
+      <td><span class="tag-pill">${esc(r.metier)}</span></td>
+      <td>${projs.map(p=>`<span class="tag-pill" style="background:${p.color}22;color:${p.color};border-color:${p.color}44;">${esc(p.name)}</span>`).join('')}</td>
+      <td><div class="charge-bar-wrap">
+        <div class="charge-bar-bg"><div class="charge-bar-fill ${chargeBarClass(charge)}" style="width:${Math.min(charge,130)}%;"></div></div>
+        <span class="charge-pct ${chargeTxtClass(charge)}">${charge}%</span>
+      </div></td>
+      <td>${statusBadge(charge)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// VUE PROJET
+// ═══════════════════════════════════════════════
+function renderProjet(){
+  const q = (g('search-projet')||{value:''}).value.toLowerCase();
+  const projs = S.projects.filter(p=>p.name.toLowerCase().includes(q));
+  g('projet-list').innerHTML = projs.map(p=>{
+    const allocs = p.allocations || {};
+    const resIds = Object.keys(allocs).filter(k=>allocs[k]>0);
+    const teamHtml = resIds.map(rid=>{
+      const r = getResource(rid);
+      if(!r) return '';
+      return `<div class="avatar avatar-sm" title="${esc(r.name)} — ${allocs[rid]}%" style="${avatarStyle(r)};border:2px solid #fff;">${initials(r.name)}</div>`;
+    }).join('');
+    const totalEffort = resIds.reduce((a,k)=>a+allocs[k],0);
+    const lead = getResource(p.lead);
+    const startDate = new Date(p.start).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    const endDate = new Date(p.end).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    return `<div class="project-card">
+      <div class="project-card-header">
+        <div class="project-color-bar" style="background:${p.color};"></div>
+        <div style="flex:1;">
+          <div class="project-card-title">${esc(p.name)}</div>
+          <div class="project-card-sub">${esc(p.desc||'')}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="font-size:16px;font-weight:800;color:${p.color};">${p.progress}%</span>
+          <button class="btn btn-sm" onclick="openModal('alloc','${p.id}')">Allocations</button>
+          <button class="btn btn-sm" onclick="openModal('editProjet','${p.id}')">✏</button>
+          <button class="del-btn" onclick="deleteProjet('${p.id}')">×</button>
+        </div>
+      </div>
+      <div class="project-body">
+        <div style="margin-bottom:14px;">
+          <div class="progress-wrap"><div class="progress-bar" style="width:${p.progress}%;background:${p.color};"></div></div>
+          <div class="progress-txt">${p.progress}% d'avancement — ${startDate} → ${endDate}</div>
+        </div>
+        <div class="project-stat-row" style="margin-bottom:14px;">
+          <div class="project-stat">
+            <div class="project-stat-val">${resIds.length}</div>
+            <div class="project-stat-lbl">Ressources</div>
+          </div>
+          <div class="project-stat">
+            <div class="project-stat-val">${totalEffort}%</div>
+            <div class="project-stat-lbl">Effort total</div>
+          </div>
+          ${lead ? `<div class="project-stat">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="avatar avatar-sm" style="${avatarStyle(lead)}">${initials(lead.name)}</div>
+              <div class="project-stat-val" style="font-size:13px;">${esc(lead.name)}</div>
+            </div>
+            <div class="project-stat-lbl">Chef de projet</div>
+          </div>` : ''}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+          ${teamHtml}
+          ${resIds.map(rid=>{
+            const r=getResource(rid); if(!r) return '';
+            return `<span class="tag-pill" style="background:${p.color}18;color:${p.color};border-color:${p.color}44;font-size:10px;">${esc(r.name)} <strong>${allocs[rid]}%</strong></span>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><div class="empty-state-ico">🗂️</div><div class="empty-state-title">Aucun projet</div></div>';
+}
+
+function deleteProjet(id){
+  if(!confirm('Supprimer ce projet ?')) return;
+  S.projects = S.projects.filter(p=>p.id!==id);
+  saveData(); renderProjet(); renderDashboard(); showToast('Projet supprimé','success');
+}
+
+// ═══════════════════════════════════════════════
+// VUE ÉQUIPE
+// ═══════════════════════════════════════════════
+function renderEquipe(){
+  const q = (g('search-equipe')||{value:''}).value.toLowerCase();
+  const mFilter = (g('filter-metier-equipe')||{value:'all'}).value;
+
+  // Populate metier filter
+  const sel = g('filter-metier-equipe');
+  if(sel && sel.options.length<=1){
+    const metiers = [...new Set(S.resources.map(r=>r.metier))].sort();
+    metiers.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o); });
+  }
+
+  const filtered = S.resources.filter(r=>{
+    const nameOk = r.name.toLowerCase().includes(q) || r.role.toLowerCase().includes(q) || r.metier.toLowerCase().includes(q);
+    const metierOk = mFilter==='all' || r.metier===mFilter;
+    return nameOk && metierOk;
+  });
+
+  g('team-grid').innerHTML = filtered.map(r=>{
+    const charge = getResourceCharge(r.id);
+    const projs = S.projects.filter(p=>(p.allocations||{})[r.id]>0);
+    return `<div class="resource-card" onclick="selectIndividu('${r.id}')">
+      <div class="resource-card-top">
+        <div class="avatar avatar-lg" style="${avatarStyle(r)}">${initials(r.name)}</div>
+        <div class="resource-card-info">
+          <div class="resource-card-name">${esc(r.name)}</div>
+          <div class="resource-card-role">${esc(r.role)}</div>
+        </div>
+      </div>
+      <div class="resource-card-meta">
+        <span class="tag-pill">${esc(r.metier)}</span>
+        ${statusBadge(charge)}
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="charge-bar-wrap">
+          <div class="charge-bar-bg" style="flex:1;"><div class="charge-bar-fill ${chargeBarClass(charge)}" style="width:${Math.min(charge,130)}%;"></div></div>
+          <span class="charge-pct ${chargeTxtClass(charge)}" style="min-width:36px;">${charge}%</span>
+        </div>
+      </div>
+      <div class="resource-card-footer">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">${projs.map(p=>`<span class="tag-pill" style="font-size:9px;background:${p.color}22;color:${p.color};border-color:${p.color}44;">${esc(p.name)}</span>`).join('')}</div>
+        <button class="btn btn-sm" onclick="event.stopPropagation();openModal('editResource','${r.id}')">✏</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-ico">👥</div><div class="empty-state-title">Aucune ressource</div></div>';
+}
+
+// ═══════════════════════════════════════════════
+// VUE INDIVIDUELLE
+// ═══════════════════════════════════════════════
+function renderIndividuelSelects(){
+  const sel = g('sel-individu');
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">— Sélectionner une ressource —</option>';
+  S.resources.forEach(r=>{
+    const o = document.createElement('option');
+    o.value = r.id; o.textContent = r.name;
+    sel.appendChild(o);
+  });
+  if(curVal) { sel.value = curVal; renderIndividuel(); }
+}
+
+function selectIndividu(id){
+  showPanel('individuel');
+  setTimeout(()=>{ g('sel-individu').value=id; renderIndividuel(); }, 50);
+}
+
+function renderIndividuel(){
+  const sel = g('sel-individu');
+  const rid = sel ? sel.value : '';
+  const cont = g('individuel-content');
+  if(!rid){ cont.innerHTML='<div class="empty-state"><div class="empty-state-ico">👤</div><div class="empty-state-title">Sélectionnez une ressource</div></div>'; return; }
+  const r = getResource(rid);
+  if(!r){ cont.innerHTML=''; return; }
+
+  const charge = getResourceCharge(rid);
+  const projs = S.projects.filter(p=>(p.allocations||{})[rid]>0);
+  const projCount = projs.length;
+
+  // Timeline months (12 months from Jan)
+  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const yearStart = new Date('2025-01-01').getTime();
+  const yearEnd = new Date('2025-12-31').getTime();
+  const yearDur = yearEnd - yearStart;
+
+  const timelineHtml = projs.map(p=>{
+    const ps = new Date(p.start).getTime();
+    const pe = new Date(p.end).getTime();
+    const left = Math.max(0, (ps-yearStart)/yearDur*100);
+    const width = Math.min(100, (pe-yearStart)/yearDur*100) - left;
+    return `<div class="timeline-row">
+      <div class="timeline-task-name" title="${esc(p.name)}">${esc(p.name)}</div>
+      <div class="timeline-bar-wrap">
+        <div class="timeline-bar" style="left:${left}%;width:${Math.max(width,2)}%;background:${p.color};">
+          ${width>8?`${(p.allocations||{})[rid]||0}%`:''}
+        </div>
+      </div>
+      <span class="charge-pct" style="min-width:34px;font-size:11px;font-weight:700;color:${p.color};">${(p.allocations||{})[rid]||0}%</span>
+    </div>`;
+  }).join('');
+
+  cont.innerHTML = `
+    <div class="indiv-hero">
+      <div class="avatar" style="${avatarStyle(r)};width:56px;height:56px;font-size:20px;font-weight:800;flex-shrink:0;">${initials(r.name)}</div>
+      <div class="indiv-hero-info">
+        <div class="indiv-hero-name">${esc(r.name)}</div>
+        <div class="indiv-hero-role">${esc(r.role)} · ${esc(r.metier)}</div>
+        <div class="indiv-hero-tags">
+          <span class="indiv-tag">📧 ${esc(r.email)}</span>
+          <span class="indiv-tag">⚡ Capacité ${r.capacity||100}%</span>
+        </div>
+      </div>
+      <div class="indiv-hero-kpis">
+        <div class="indiv-kpi">
+          <div class="indiv-kpi-val" style="color:${charge>100?'#ff6b6b':charge>80?'#f7a800':'#5aaa20'}">${charge}%</div>
+          <div class="indiv-kpi-lbl">Charge</div>
+        </div>
+        <div class="indiv-kpi">
+          <div class="indiv-kpi-val">${projCount}</div>
+          <div class="indiv-kpi-lbl">Projet${projCount>1?'s':''}</div>
+        </div>
+        <div class="indiv-kpi">
+          <div class="indiv-kpi-val">${Math.max(0,100-charge)}%</div>
+          <div class="indiv-kpi-lbl">Dispo</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card">
+        <div class="card-head"><span class="card-title">🗂 Projets assignés</span></div>
+        <div class="card-body" style="padding:12px 14px;">
+          ${projs.length===0 ? '<div style="color:#bbb;font-size:12px;">Aucun projet assigné</div>' :
+            projs.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f8;">
+              <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
+              <div style="flex:1;font-size:12px;font-weight:600;color:#0d1b3e;">${esc(p.name)}</div>
+              <div style="font-size:12px;font-weight:800;color:${p.color};">${(p.allocations||{})[rid]||0}%</div>
+              <div class="progress-wrap" style="width:60px;margin:0;"><div class="progress-bar" style="width:${p.progress}%;background:${p.color};"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">📊 Répartition charge</span></div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:center;padding:20px;">
+          ${renderDonut(projs, rid, charge)}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">📅 Timeline 2025</span></div>
+      <div class="card-body">
+        <div class="timeline-months" style="padding-left:170px;margin-bottom:8px;">
+          ${months.map(m=>`<div class="timeline-month">${m}</div>`).join('')}
+        </div>
+        ${timelineHtml || '<div style="color:#bbb;font-size:12px;">Aucune période d\'affectation</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderDonut(projs, rid, totalCharge){
+  const size = 140; const r = 50; const cx = 70; const cy = 70;
+  const circumference = 2*Math.PI*r;
+  let offset = 0;
+  const segments = projs.map(p=>{
+    const alloc = (p.allocations||{})[rid]||0;
+    const pct = totalCharge>0 ? alloc/Math.max(totalCharge,100)*100 : 0;
+    const dash = circumference*pct/100;
+    const seg = { dash, offset, color: p.color, name: p.name, alloc };
+    offset += dash;
+    return seg;
+  });
+  // free
+  const freePct = Math.max(0, 100-totalCharge);
+  segments.push({ dash: circumference*freePct/100, offset, color:'#eef0f8', name:'Libre', alloc:freePct });
+
+  const arcs = segments.map(s=>`
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="22"
+      stroke-dasharray="${s.dash} ${circumference}"
+      stroke-dashoffset="${-s.offset}"
+      class="mini-ring"/>
+  `).join('');
+
+  return `<div style="text-align:center;">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f0f2f8" stroke-width="22"/>
+      ${arcs}
+      <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="18" font-weight="800" fill="#0d1b3e">${totalCharge}%</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="9" fill="#aaa" font-family="DM Sans,sans-serif">CHARGE</text>
+    </svg>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// VUE MÉTIER
+// ═══════════════════════════════════════════════
+function renderMetier(){
+  const metiers = [...new Set(S.resources.map(r=>r.metier))].sort();
+  const metierIcons = { 'Architecture':'🏗', 'Design RTL':'⚡', 'Vérification':'🔍', 'Software BSP':'💻', 'DFT':'🧪', 'Physical Design':'📐', 'Validation':'✅' };
+  const metierBgColors = ['#eef3ff','#f3eeff','#fff9e8','#fff0ee','#edfff3','#e8fcff','#f0fff4'];
+
+  g('metier-content').innerHTML = metiers.map((m,mi)=>{
+    const resources = S.resources.filter(r=>r.metier===m);
+    const avgCharge = Math.round(resources.reduce((a,r)=>a+getResourceCharge(r.id),0)/Math.max(resources.length,1));
+    const sur = resources.filter(r=>getResourceCharge(r.id)>100).length;
+
+    const memberRows = resources.map(r=>{
+      const charge = getResourceCharge(r.id);
+      const projs = S.projects.filter(p=>(p.allocations||{})[r.id]>0);
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px;">
+          <div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>
+          <div>
+            <div style="font-weight:600;font-size:12px;">${esc(r.name)}</div>
+            <div style="font-size:10px;color:#aaa;">${esc(r.role)}</div>
+          </div>
+        </div></td>
+        <td>${projs.map(p=>`<span class="tag-pill" style="font-size:9px;background:${p.color}22;color:${p.color};border-color:${p.color}44;">${esc(p.name)}</span>`).join('')||'<span style="color:#ccc;font-size:11px;">—</span>'}</td>
+        <td><div class="charge-bar-wrap">
+          <div class="charge-bar-bg" style="width:100px;"><div class="charge-bar-fill ${chargeBarClass(charge)}" style="width:${Math.min(charge,130)}%;"></div></div>
+          <span class="charge-pct ${chargeTxtClass(charge)}">${charge}%</span>
+        </div></td>
+        <td>${statusBadge(charge)}</td>
+        <td><button class="btn btn-sm" onclick="selectIndividu('${r.id}')">→ Détail</button></td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="metier-section">
+      <div class="metier-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
+        <div class="metier-icon" style="background:${metierBgColors[mi%metierBgColors.length]};">${metierIcons[m]||'🔧'}</div>
+        <div class="metier-name">${esc(m)}</div>
+        <div class="metier-count">${resources.length} personne${resources.length>1?'s':''}</div>
+        ${sur>0?`<span class="badge b-sur">⚠ ${sur} surchargé${sur>1?'s':''}</span>`:''}
+        <div class="metier-charge-global">
+          <div class="charge-bar-bg" style="flex:1;"><div class="charge-bar-fill ${chargeBarClass(avgCharge)}" style="width:${Math.min(avgCharge,130)}%;"></div></div>
+          <span class="charge-pct ${chargeTxtClass(avgCharge)}">${avgCharge}%</span>
+        </div>
+      </div>
+      <div class="card" style="padding:0;">
+        <table class="soc-table">
+          <thead><tr><th>Ressource</th><th>Projets</th><th>Charge</th><th>Statut</th><th style="width:80px;"></th></tr></thead>
+          <tbody>${memberRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// CHARGE HEBDO
+// ═══════════════════════════════════════════════
+function setChargeMode(mode){
+  CHARGE_MODE = mode;
+  g('charge-btn-ressource').classList.toggle('active', mode==='ressource');
+  g('charge-btn-projet').classList.toggle('active', mode==='projet');
+  renderCharge();
+}
+
+function chargeShift(w){ CHARGE_OFFSET += w; renderCharge(); }
+function chargeGoToday(){ CHARGE_OFFSET = 0; renderCharge(); }
+
+function renderCharge(){
+  const WEEKS = 12;
+  const weekStart = getWeekStart(CHARGE_OFFSET);
+  const endWeek = new Date(weekStart);
+  endWeek.setDate(endWeek.getDate() + WEEKS*7 - 1);
+  g('charge-range-lbl').textContent = fmtDate(weekStart) + ' – ' + fmtDate(endWeek);
+
+  // Build weeks array
+  const weeks = [];
+  for(let i=0;i<WEEKS;i++){
+    const ws = new Date(weekStart);
+    ws.setDate(ws.getDate()+i*7);
+    const we = new Date(ws);
+    we.setDate(we.getDate()+6);
+    weeks.push({ start:ws, end:we, iso:fmtDateISO(ws) });
+  }
+
+  const today = fmtDateISO(new Date());
+
+  if(CHARGE_MODE==='ressource'){
+    // Columns: name + weeks
+    const cols = 1 + WEEKS;
+    const colDef = `grid-template-columns: 180px ${Array(WEEKS).fill('1fr').join(' ')}`;
+
+    let html = `<div class="alloc-grid" style="${colDef}">`;
+    // Header
+    html += `<div class="alloc-hdr" style="text-align:left;padding-left:14px;">Ressource</div>`;
+    weeks.forEach(w=>{
+      const isToday = today >= fmtDateISO(w.start) && today <= fmtDateISO(w.end);
+      html += `<div class="alloc-hdr${isToday?' today-col':''}">S${w.start.toLocaleDateString('fr-FR',{day:'2-digit'})}<br>${w.start.toLocaleDateString('fr-FR',{month:'short'})}</div>`;
+    });
+
+    S.resources.forEach(r=>{
+      html += `<div class="alloc-name"><div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>${esc(r.name)}</div>`;
+      weeks.forEach(w=>{
+        // Charge = sum of allocations from projects that overlap this week
+        let charge = 0;
+        S.projects.forEach(p=>{
+          const ps = new Date(p.start);
+          const pe = new Date(p.end);
+          if(ps <= w.end && pe >= w.start){
+            charge += (p.allocations||{})[r.id] || 0;
+          }
+        });
+        const isToday = today >= fmtDateISO(w.start) && today <= fmtDateISO(w.end);
+        const cls = chargeClass(charge) + (isToday?' today-col':'');
+        html += `<div class="alloc-cell ${cls}" title="${charge}%">${charge>0?charge+'%':''}</div>`;
+      });
+    });
+
+    html += '</div>';
+    g('charge-grid').innerHTML = html;
+  } else {
+    // By projet
+    const colDef = `grid-template-columns: 180px ${Array(WEEKS).fill('1fr').join(' ')}`;
+    let html = `<div class="alloc-grid" style="${colDef}">`;
+    html += `<div class="alloc-hdr" style="text-align:left;padding-left:14px;">Projet</div>`;
+    weeks.forEach(w=>{
+      const isToday = today >= fmtDateISO(w.start) && today <= fmtDateISO(w.end);
+      html += `<div class="alloc-hdr${isToday?' today-col':''}">S${w.start.toLocaleDateString('fr-FR',{day:'2-digit'})}<br>${w.start.toLocaleDateString('fr-FR',{month:'short'})}</div>`;
+    });
+    S.projects.forEach(p=>{
+      html += `<div class="alloc-name"><span style="width:8px;height:8px;border-radius:50%;background:${p.color};flex-shrink:0;display:inline-block;margin-right:6px;"></span>${esc(p.name)}</div>`;
+      weeks.forEach(w=>{
+        const ps = new Date(p.start), pe = new Date(p.end);
+        const active = ps <= w.end && pe >= w.start;
+        const totalAlloc = active ? Object.values(p.allocations||{}).reduce((a,v)=>a+v,0) : 0;
+        const resourceCount = active ? Object.values(p.allocations||{}).filter(v=>v>0).length : 0;
+        const isToday = today >= fmtDateISO(w.start) && today <= fmtDateISO(w.end);
+        const fill = active ? (resourceCount>0?'alloc-l80':'alloc-l20') : 'alloc-0';
+        html += `<div class="alloc-cell ${fill}${isToday?' today-col':''}" title="${active?resourceCount+' res.':'Hors période'}">${active&&resourceCount>0?resourceCount+'👤':''}</div>`;
+      });
+    });
+    html += '</div>';
+    g('charge-grid').innerHTML = html;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ALLOCATIONS
+// ═══════════════════════════════════════════════
+function renderAllocation(){
+  // Populate project filter
+  const sel = g('filter-alloc-projet');
+  if(sel && sel.options.length<=1){
+    S.projects.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); });
+  }
+  const pFilter = (g('filter-alloc-projet')||{value:'all'}).value;
+  const projs = pFilter==='all' ? S.projects : S.projects.filter(p=>p.id===pFilter);
+
+  const cols = 1 + projs.length;
+  const colDef = `grid-template-columns: 200px ${Array(projs.length).fill('1fr').join(' ')} 120px`;
+
+  let html = `<div class="alloc-grid" style="${colDef}">`;
+  // Header
+  html += `<div class="alloc-hdr" style="text-align:left;padding-left:14px;">Ressource</div>`;
+  projs.forEach(p=>{
+    html += `<div class="alloc-hdr" style="background:${p.color}18;color:${p.color};">${esc(p.name)}</div>`;
+  });
+  html += `<div class="alloc-hdr">Total</div>`;
+
+  S.resources.forEach(r=>{
+    html += `<div class="alloc-name"><div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>${esc(r.name)}</div>`;
+    let total = 0;
+    projs.forEach(p=>{
+      const v = (p.allocations||{})[r.id]||0;
+      total += v;
+      const cls = chargeClass(v);
+      html += `<div class="alloc-cell ${cls}" title="${esc(p.name)} — ${v}%" style="cursor:pointer;" onclick="editAlloc('${p.id}','${r.id}')">${v>0?v+'%':''}</div>`;
+    });
+    const totalCls = chargeClass(total);
+    html += `<div class="alloc-cell ${totalCls}" style="font-size:11px;font-weight:800;">${total>0?total+'%':''}</div>`;
+  });
+
+  html += '</div>';
+  g('alloc-content').innerHTML = html;
+}
+
+function editAlloc(pid, rid){
+  const p = getProject(pid);
+  const r = getResource(rid);
+  if(!p||!r) return;
+  const cur = (p.allocations||{})[rid]||0;
+  const val = prompt(`Allocation de ${r.name} sur ${p.name} (%)`, cur);
+  if(val===null) return;
+  const n = Math.max(0,Math.min(200,parseInt(val)||0));
+  if(!p.allocations) p.allocations={};
+  p.allocations[rid] = n;
+  saveData(); renderAllocation(); renderDashboard();
+  showToast(`Allocation mise à jour : ${n}%`, 'success');
+}
+
+// ═══════════════════════════════════════════════
+// RESSOURCES CONFIG
+// ═══════════════════════════════════════════════
+function renderRessources(){
+  g('ressources-tbody').innerHTML = S.resources.map(r=>{
+    const charge = getResourceCharge(r.id);
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>
+        <div style="font-weight:600;font-size:13px;">${esc(r.name)}</div>
+      </div></td>
+      <td>${esc(r.role)}</td>
+      <td><span class="tag-pill">${esc(r.metier)}</span></td>
+      <td style="font-size:11px;color:#888;">${esc(r.email)}</td>
+      <td>${r.capacity||100}%</td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm" onclick="openModal('editResource','${r.id}')">✏</button>
+        <button class="del-btn" onclick="deleteResource('${r.id}')">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteResource(id){
+  if(!confirm('Supprimer cette ressource ?')) return;
+  S.resources = S.resources.filter(r=>r.id!==id);
+  S.projects.forEach(p=>{ if(p.allocations) delete p.allocations[id]; });
+  saveData(); renderRessources(); renderDashboard();
+  showToast('Ressource supprimée','success');
+}
+
+// ═══════════════════════════════════════════════
+// PROJETS CONFIG
+// ═══════════════════════════════════════════════
+function renderProjetsConfig(){
+  g('projets-tbody').innerHTML = S.projects.map(p=>{
+    const lead = getResource(p.lead);
+    const resCount = Object.keys(p.allocations||{}).filter(k=>(p.allocations[k]||0)>0).length;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
+        <div style="font-weight:700;">${esc(p.name)}</div>
+      </div></td>
+      <td>${lead ? `<div style="display:flex;align-items:center;gap:6px;"><div class="avatar avatar-sm" style="${avatarStyle(lead)}">${initials(lead.name)}</div>${esc(lead.name)}</div>` : '—'}</td>
+      <td style="font-size:11px;color:#666;">${new Date(p.start).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})} → ${new Date(p.end).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</td>
+      <td>${resCount} ressource${resCount>1?'s':''}</td>
+      <td><div class="charge-bar-wrap">
+        <div class="charge-bar-bg" style="width:100px;"><div class="progress-bar" style="width:${p.progress}%;background:${p.color};"></div></div>
+        <span style="font-size:11px;font-weight:700;min-width:32px;">${p.progress}%</span>
+      </div></td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm" onclick="openModal('editProjet','${p.id}')">✏</button>
+        <button class="del-btn" onclick="deleteProjet('${p.id}');renderProjetsConfig();">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function closeModal(){ g('modal-bd').classList.remove('open'); }
+
+function openModal(type, id){
+  const mc = g('modal-inner');
+  if(type==='resource'){
+    mc.innerHTML = `<div class="modal-head"><h3>➕ Nouvelle ressource</h3><button class="del-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Nom</label><input id="m-name" placeholder="Alice Martin"></div>
+        <div class="form-row"><label class="form-lbl">Rôle</label><input id="m-role" placeholder="RTL Designer"></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Métier</label><select id="m-metier">${METIERS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-lbl">Capacité (%)</label><input id="m-capacity" type="number" min="0" max="100" value="100"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Email</label><input id="m-email" type="email" placeholder="alice@chip.io"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-accent" onclick="saveResource()">Créer</button></div>`;
+  }
+  else if(type==='editResource'){
+    const r = getResource(id);
+    if(!r) return;
+    mc.innerHTML = `<div class="modal-head"><h3>✏ Modifier ${esc(r.name)}</h3><button class="del-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Nom</label><input id="m-name" value="${esc(r.name)}"></div>
+        <div class="form-row"><label class="form-lbl">Rôle</label><input id="m-role" value="${esc(r.role)}"></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Métier</label><select id="m-metier">${METIERS.map(m=>`<option${m===r.metier?' selected':''}>${m}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-lbl">Capacité (%)</label><input id="m-capacity" type="number" min="0" max="100" value="${r.capacity||100}"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Email</label><input id="m-email" type="email" value="${esc(r.email)}"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-accent" onclick="saveResource('${r.id}')">Enregistrer</button></div>`;
+  }
+  else if(type==='projet'){
+    const colorOpts = PROJECT_COLORS.map(c=>`<option value="${c}" style="background:${c};">${c}</option>`).join('');
+    const resOpts = S.resources.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('');
+    mc.innerHTML = `<div class="modal-head"><h3>➕ Nouveau projet</h3><button class="del-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-lbl">Nom du projet</label><input id="m-pname" placeholder="SoC Gen5 CPU"></div>
+      <div class="form-row"><label class="form-lbl">Description</label><textarea id="m-pdesc" rows="2" placeholder="Description..."></textarea></div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Chef de projet</label><select id="m-plead"><option value="">—</option>${resOpts}</select></div>
+        <div class="form-row"><label class="form-lbl">Couleur</label><select id="m-pcolor">${colorOpts}</select></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Début</label><input id="m-pstart" type="date" value="2025-01-06"></div>
+        <div class="form-row"><label class="form-lbl">Fin</label><input id="m-pend" type="date" value="2025-12-31"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Avancement (%)</label><input id="m-pprog" type="number" min="0" max="100" value="0"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="saveProjet()">Créer</button></div>`;
+  }
+  else if(type==='editProjet'){
+    const p = getProject(id);
+    if(!p) return;
+    const colorOpts = PROJECT_COLORS.map(c=>`<option value="${c}"${c===p.color?' selected':''}>${c}</option>`).join('');
+    const resOpts = S.resources.map(r=>`<option value="${r.id}"${r.id===p.lead?' selected':''}>${esc(r.name)}</option>`).join('');
+    mc.innerHTML = `<div class="modal-head"><h3>✏ Modifier ${esc(p.name)}</h3><button class="del-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-lbl">Nom</label><input id="m-pname" value="${esc(p.name)}"></div>
+      <div class="form-row"><label class="form-lbl">Description</label><textarea id="m-pdesc" rows="2">${esc(p.desc||'')}</textarea></div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Chef de projet</label><select id="m-plead"><option value="">—</option>${resOpts}</select></div>
+        <div class="form-row"><label class="form-lbl">Couleur</label><select id="m-pcolor">${colorOpts}</select></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-row"><label class="form-lbl">Début</label><input id="m-pstart" type="date" value="${p.start}"></div>
+        <div class="form-row"><label class="form-lbl">Fin</label><input id="m-pend" type="date" value="${p.end}"></div>
+      </div>
+      <div class="form-row"><label class="form-lbl">Avancement (%)</label><input id="m-pprog" type="number" min="0" max="100" value="${p.progress}"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="saveProjet('${p.id}')">Enregistrer</button></div>`;
+  }
+  else if(type==='alloc'){
+    const p = getProject(id);
+    if(!p) return;
+    const rows = S.resources.map(r=>{
+      const cur = (p.allocations||{})[r.id]||0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f8;">
+        <div class="avatar avatar-sm" style="${avatarStyle(r)}">${initials(r.name)}</div>
+        <div style="flex:1;font-size:12px;font-weight:600;">${esc(r.name)}<div style="font-size:10px;color:#aaa;">${esc(r.role)}</div></div>
+        <input type="number" min="0" max="200" value="${cur}" id="alloc-inp-${r.id}" style="width:70px;padding:5px 8px;border:1px solid #dde1ec;border-radius:6px;font-size:12px;font-weight:700;text-align:center;">
+        <span style="font-size:11px;color:#aaa;">%</span>
+      </div>`;
+    }).join('');
+    mc.innerHTML = `<div class="modal-head"><h3>🎯 Allocations — ${esc(p.name)}</h3><button class="del-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body">${rows}</div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-accent" onclick="saveAllocs('${p.id}')">Enregistrer</button></div>`;
+  }
+  g('modal-bd').classList.add('open');
+}
+
+function saveResource(id){
+  const name = (g('m-name').value||'').trim();
+  if(!name){ showToast('Nom requis','error'); return; }
+  const data = {
+    name, role: g('m-role').value||'', metier: g('m-metier').value||'',
+    email: g('m-email').value||'', capacity: parseInt(g('m-capacity').value)||100,
+    color: PROJECT_COLORS[S.resources.length % PROJECT_COLORS.length]
+  };
+  if(id){
+    const r = getResource(id);
+    Object.assign(r, data);
+    showToast('Ressource mise à jour','success');
+  } else {
+    S.resources.push({ id: uid(), ...data });
+    showToast('Ressource ajoutée','success');
+  }
+  saveData(); closeModal();
+  renderRessources(); renderEquipe(); renderDashboard();
+}
+
+function saveProjet(id){
+  const name = (g('m-pname').value||'').trim();
+  if(!name){ showToast('Nom requis','error'); return; }
+  const data = {
+    name, desc: g('m-pdesc').value||'',
+    lead: g('m-plead').value||'',
+    color: g('m-pcolor').value||'#4f8ef7',
+    start: g('m-pstart').value||'2025-01-01',
+    end: g('m-pend').value||'2025-12-31',
+    progress: Math.max(0,Math.min(100,parseInt(g('m-pprog').value)||0))
+  };
+  if(id){
+    const p = getProject(id);
+    Object.assign(p, data);
+    showToast('Projet mis à jour','success');
+  } else {
+    S.projects.push({ id: uid(), allocations:{}, ...data });
+    showToast('Projet créé','success');
+  }
+  saveData(); closeModal();
+  renderProjet(); renderDashboard(); renderProjetsConfig();
+}
+
+function saveAllocs(pid){
+  const p = getProject(pid);
+  if(!p) return;
+  if(!p.allocations) p.allocations={};
+  S.resources.forEach(r=>{
+    const inp = g('alloc-inp-'+r.id);
+    if(inp) p.allocations[r.id] = Math.max(0,Math.min(200,parseInt(inp.value)||0));
+  });
+  saveData(); closeModal();
+  renderAllocation(); renderDashboard();
+  showToast('Allocations enregistrées','success');
+}
+
+// ═══════════════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════════════
+function renderImport(){
+  // Reset log on panel open
+  importLog('Prêt. Glissez un fichier ou cliquez sur une zone pour importer.');
+}
+
+function importLog(msg, type=''){
+  const el = g('import-log');
+  if(!el) return;
+  const cls = type==='ok'?'log-ok':type==='warn'?'log-warn':type==='err'?'log-err':'';
+  el.innerHTML += (el.innerHTML && el.innerHTML!==msg ? '<br>' : '') + `<span class="${cls}">${esc(msg)}</span>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setImportLog(msg, type=''){
+  const el = g('import-log');
+  if(!el) return;
+  const cls = type==='ok'?'log-ok':type==='warn'?'log-warn':type==='err'?'log-err':'';
+  el.innerHTML = `<span class="${cls}">${esc(msg)}</span>`;
+}
+
+// ── Drag & Drop ──
+function dragOver(e, id){ e.preventDefault(); g(id).classList.add('drag-over'); }
+function dragLeave(id){ g(id).classList.remove('drag-over'); }
+
+function dropCSV(e, type){
+  e.preventDefault();
+  dragLeave('drop-'+type.replace('allocs','allocs'));
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  readFile(f, txt => parseAndImportCSV(txt, type));
+}
+function dropJSON(e){
+  e.preventDefault();
+  dragLeave('drop-json');
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  readFile(f, txt => doImportJSON(txt, false));
+}
+
+function readFile(file, cb){
+  const r = new FileReader();
+  r.onload = ev => cb(ev.target.result);
+  r.onerror = () => setImportLog('Erreur lecture fichier.','err');
+  r.readAsText(file, 'UTF-8');
+}
+
+// ── CSV Import ──
+function importCSV(input, type){
+  const f = input.files[0];
+  if(!f){ input.value=''; return; }
+  readFile(f, txt => parseAndImportCSV(txt, type));
+  input.value = '';
+}
+
+function parseCSV(txt){
+  const lines = txt.trim().split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return [];
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_'));
+  return lines.slice(1).map(line=>{
+    const vals = splitCSVLine(line);
+    const obj = {};
+    headers.forEach((h,i)=>{ obj[h]=vals[i]!==undefined?vals[i].trim():''; });
+    return obj;
+  });
+}
+
+function splitCSVLine(line){
+  const result=[], re=/("([^"]*(?:""[^"]*)*)"|([^,]*))(,|$)/g;
+  let m;
+  while((m=re.exec(line))!==null){
+    result.push(m[2]!==undefined?m[2].replace(/""/g,'"'):m[3]||'');
+    if(m[4]==='') break;
+  }
+  return result;
+}
+
+function parseAndImportCSV(txt, type){
+  setImportLog('Lecture du fichier…');
+  const rows = parseCSV(txt);
+  if(!rows.length){ setImportLog('Fichier vide ou format invalide.','err'); return; }
+
+  if(type==='resources'){
+    const imported = rows.map((r,i)=>{
+      if(!r.name){ importLog(`Ligne ${i+2}: nom manquant, ignoré.`,'warn'); return null; }
+      return {
+        id: uid(),
+        name: r.name, role: r.role||'', metier: r.metier||r.domain||'',
+        email: r.email||'', capacity: parseInt(r.capacity)||100,
+        color: PROJECT_COLORS[i % PROJECT_COLORS.length]
+      };
+    }).filter(Boolean);
+    S.resources = imported;
+    saveData(); fullRefresh();
+    setImportLog(`✓ ${imported.length} ressource(s) importée(s) avec succès.`,'ok');
+  }
+  else if(type==='projects'){
+    const imported = rows.map((r,i)=>{
+      if(!r.name){ importLog(`Ligne ${i+2}: nom manquant, ignoré.`,'warn'); return null; }
+      const lead = S.resources.find(res=>res.name.toLowerCase()===((r.lead_name||r.lead||'').toLowerCase()));
+      return {
+        id: uid(),
+        name: r.name, desc: r.desc||r.description||'',
+        lead: lead?lead.id:'',
+        start: r.start||'2025-01-01', end: r.end||'2025-12-31',
+        progress: Math.min(100,Math.max(0,parseInt(r.progress)||0)),
+        color: r.color||PROJECT_COLORS[i % PROJECT_COLORS.length],
+        allocations: {}
+      };
+    }).filter(Boolean);
+    S.projects = imported;
+    saveData(); fullRefresh();
+    setImportLog(`✓ ${imported.length} projet(s) importé(s) avec succès.`,'ok');
+  }
+  else if(type==='allocs'){
+    let count=0, warn=0;
+    rows.forEach((r,i)=>{
+      const proj = S.projects.find(p=>p.name.toLowerCase()===(r.project_name||r.project||'').toLowerCase());
+      const res  = S.resources.find(res=>res.name.toLowerCase()===(r.resource_name||r.resource||'').toLowerCase());
+      if(!proj||!res){ warn++; importLog(`Ligne ${i+2}: projet ou ressource introuvable.`,'warn'); return; }
+      if(!proj.allocations) proj.allocations={};
+      proj.allocations[res.id] = Math.min(200,Math.max(0,parseInt(r.allocation)||0));
+      count++;
+    });
+    saveData(); fullRefresh();
+    setImportLog(`✓ ${count} allocation(s) importée(s).${warn>0?' ⚠ '+warn+' ligne(s) ignorée(s).':''}`,'ok');
+  }
+}
+
+// ── JSON Import ──
+function importJSONFile(input){
+  const f = input.files[0];
+  if(!f){ input.value=''; return; }
+  readFile(f, txt => doImportJSON(txt, false));
+  input.value='';
+}
+function importJSONMerge(input){
+  const f = input.files[0];
+  if(!f){ input.value=''; return; }
+  readFile(f, txt => doImportJSON(txt, true));
+  input.value='';
+}
+
+function doImportJSON(txt, merge){
+  setImportLog('Lecture JSON…');
+  let data;
+  try { data = JSON.parse(txt); } catch(e){ setImportLog('JSON invalide : '+e.message,'err'); return; }
+  if(!data.resources&&!data.projects){ setImportLog('Format JSON non reconnu (clés resources/projects attendues).','err'); return; }
+  if(merge){
+    // Merge: add new items that don't exist by id
+    if(data.resources){
+      const existIds = new Set(S.resources.map(r=>r.id));
+      const added = data.resources.filter(r=>!existIds.has(r.id));
+      S.resources.push(...added);
+      importLog(`⇌ ${added.length} ressource(s) ajoutée(s) par merge.`,'ok');
+    }
+    if(data.projects){
+      const existIds = new Set(S.projects.map(p=>p.id));
+      const added = data.projects.filter(p=>!existIds.has(p.id));
+      // Update existing ones
+      data.projects.filter(p=>existIds.has(p.id)).forEach(dp=>{
+        const ep = S.projects.find(p=>p.id===dp.id);
+        if(ep) Object.assign(ep, dp);
+      });
+      S.projects.push(...added);
+      importLog(`⇌ ${added.length} projet(s) ajouté(s), ${data.projects.length-added.length} mis à jour.`,'ok');
+    }
+  } else {
+    if(data.resources) S.resources = data.resources;
+    if(data.projects)  S.projects  = data.projects;
+    setImportLog('✓ Importation complète réussie.','ok');
+  }
+  saveData(); fullRefresh();
+  showToast(merge ? 'Merge effectué' : 'Import réussi', 'success');
+}
+
+// ── CSV Export ──
+function exportCSV(type){
+  let csv='', filename='';
+  if(type==='resources'){
+    csv = 'name,role,metier,email,capacity\n';
+    csv += S.resources.map(r=>[r.name,r.role,r.metier,r.email,r.capacity||100].map(csvCell).join(',')).join('\n');
+    filename = 'ressources.csv';
+  }
+  else if(type==='projects'){
+    csv = 'name,lead_name,start,end,progress,color,desc\n';
+    csv += S.projects.map(p=>{
+      const lead = getResource(p.lead);
+      return [p.name,lead?lead.name:'',p.start,p.end,p.progress,p.color,p.desc||''].map(csvCell).join(',');
+    }).join('\n');
+    filename = 'projets.csv';
+  }
+  else if(type==='allocs'){
+    csv = 'project_name,resource_name,allocation\n';
+    const rows=[];
+    S.projects.forEach(p=>{
+      Object.entries(p.allocations||{}).forEach(([rid,v])=>{
+        if(v>0){ const r=getResource(rid); if(r) rows.push([p.name,r.name,v].map(csvCell).join(',')); }
+      });
+    });
+    csv += rows.join('\n');
+    filename = 'allocations.csv';
+  }
+  else if(type==='charges'){
+    csv = 'ressource,role,metier,' + S.projects.map(p=>csvCell(p.name)).join(',') + ',total\n';
+    csv += S.resources.map(r=>{
+      const cols = S.projects.map(p=>((p.allocations||{})[r.id]||0));
+      const total = cols.reduce((a,v)=>a+v,0);
+      return [r.name,r.role,r.metier,...cols,total].map(csvCell).join(',');
+    }).join('\n');
+    filename = 'rapport_charge.csv';
+  }
+  downloadBlob(csv, filename, 'text/csv;charset=utf-8;');
+  showToast(`Export ${filename} téléchargé`,'success');
+}
+
+function csvCell(v){
+  const s = String(v===null||v===undefined?'':v);
+  return (s.includes(',')||s.includes('"')||s.includes('\n')) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+
+// ── JSON Export ──
+function exportJSON(){
+  const data = { _version:'1.0', _exported: new Date().toISOString(), resources: S.resources, projects: S.projects };
+  downloadBlob(JSON.stringify(data,null,2), 'rnd_resource_manager_'+today4Filename()+'.json', 'application/json');
+  showToast('Sauvegarde JSON exportée','success');
+}
+
+function today4Filename(){
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], {type: mime});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); document.body.removeChild(a); }, 500);
+}
+
+// ── CSV Templates ──
+function downloadTemplate(type){
+  let csv='', filename='';
+  if(type==='resources'){
+    csv = 'name,role,metier,email,capacity\nAlice Martin,SoC Architect,Architecture,alice@chip.io,100\nBruno Leclerc,RTL Designer,Design RTL,bruno@chip.io,80';
+    filename = 'modele_ressources.csv';
+  } else if(type==='projects'){
+    csv = 'name,lead_name,start,end,progress,color,desc\nSoC Gen5 CPU,Alice Martin,2025-01-06,2025-12-31,38,#4f8ef7,Description du projet\nGPU Subsystem,Bruno Leclerc,2025-03-01,2025-10-31,22,#6c63ff,Description';
+    filename = 'modele_projets.csv';
+  } else if(type==='allocs'){
+    csv = 'project_name,resource_name,allocation\nSoC Gen5 CPU,Alice Martin,60\nSoC Gen5 CPU,Bruno Leclerc,80\nGPU Subsystem,Camille Dupont,50';
+    filename = 'modele_allocations.csv';
+  }
+  downloadBlob(csv, filename, 'text/csv;charset=utf-8;');
+  showToast(`Modèle ${filename} téléchargé`);
+}
+
+// ── Reset ──
+function confirmReset(type){
+  const labels = { resources:'toutes les ressources', projects:'tous les projets', all:'toutes les données' };
+  if(!confirm(`Supprimer ${labels[type]} ? Cette action est irréversible.`)) return;
+  if(type==='resources'||type==='all'){ S.resources=[]; S.projects.forEach(p=>p.allocations={}); }
+  if(type==='projects'||type==='all')  S.projects=[];
+  saveData(); fullRefresh();
+  showToast('Données réinitialisées','success');
+  setImportLog(`⊘ Reset "${type}" effectué.`,'warn');
+}
+
+function fullRefresh(){
+  renderDashboard();
+  renderRessources();
+  renderProjetsConfig();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  renderDashboard();
+});
+</script>
+</body>
+</html>
